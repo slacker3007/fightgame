@@ -1,0 +1,5 @@
+fullSTR2,9693
+fullSTR,8043
+lol,7569
+player,7481
+lol,5917
