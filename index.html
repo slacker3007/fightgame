@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gauntlet Arena: Reforged</title>
+    <title>Gauntlet Arena: Scoreboard & Logic Restored</title>
     <style>
         body { background-color: #0a0a0f; color: white; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; }
         canvas { border: 4px solid #464664; background-color: #14141e; box-shadow: 0 0 50px rgba(0,0,0,1); cursor: crosshair; }
@@ -53,12 +53,10 @@ const ALL_ITEMS = [
     {name: "Void Cloak", type: "armor", STA: 6, DEX: 12, rarity: "EPIC"}
 ];
 
-// --- ENGINE VARIABLES ---
 let state = "menu", userName = "", score = 0, currentLvl = 1;
 let player = {}, enemy = {}, log = [];
 let selAtk = null, selBlk = [], isProcessing = false;
-let pDisplayHp = 0, eDisplayHp = 0, shake = 0;
-let particles = [];
+let pDisplayHp = 0, eDisplayHp = 0, shake = 0, particles = [];
 let highScores = JSON.parse(localStorage.getItem('gauntletScores')) || [];
 let hoveredItem = null, tooltipPos = {x:0, y:0};
 
@@ -69,12 +67,7 @@ for(let i=1; i<=10; i++) load(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
 Object.keys(ZONE_NAMES).forEach(id => load(`icon_${id}`, `assets/${ZONE_NAMES[id].toLowerCase()}.png`));
 ALL_ITEMS.forEach(item => load(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
-/**
- * --- CORE LOGIC ---
- */
-function spawnText(txt, x, y, col) {
-    particles.push({ txt, x, y, col, life: 1.0, vy: -2 });
-}
+function spawnText(txt, x, y, col) { particles.push({ txt, x, y, col, life: 1.0, vy: -2 }); }
 
 function initPlayer() {
     player = { STR: 5, DEX: 5, STA: 5, LUCK: 5, hp: 0, maxHp: 0, weapon: null, armor: null, inventory: [], points: 0, bonus: {} };
@@ -87,9 +80,7 @@ function initPlayer() {
 function calcStats() {
     player.bonus = {STR: 0, DEX: 0, STA: 0, LUCK: 0};
     [player.weapon, player.armor].forEach(item => {
-        if(item) {
-            ["STR", "DEX", "STA", "LUCK"].forEach(s => { if(item[s]) player.bonus[s] += item[s]; });
-        }
+        if(item) ["STR", "DEX", "STA", "LUCK"].forEach(s => { if(item[s]) player.bonus[s] += item[s]; });
     });
     player.maxHp = 100 + ((player.STA + player.bonus.STA) * 15);
     player.dmg = 10 + ((player.STR + player.bonus.STR) * 4);
@@ -103,15 +94,34 @@ function startLevel(lvl) {
     eDisplayHp = enemy.hp;
 }
 
+function drawProgressBar() {
+    const barWidth = 700, startX = (canvas.width - barWidth) / 2, startY = 20, slotW = barWidth / 10;
+    ctx.textAlign = "center"; ctx.font = "bold 10px Arial";
+    for (let i = 1; i <= 10; i++) {
+        const x = startX + (i - 1) * slotW, isDefeated = i < currentLvl, isCurrent = i === currentLvl;
+        ctx.fillStyle = isDefeated ? COLORS.GRAY : (isCurrent ? COLORS.CYAN : "rgba(40, 40, 60, 0.6)");
+        ctx.fillRect(x + 5, startY, slotW - 10, 24);
+        ctx.strokeStyle = isCurrent ? COLORS.GOLD : COLORS.WHITE;
+        ctx.strokeRect(x + 5, startY, slotW - 10, 24);
+        ctx.fillStyle = isCurrent ? COLORS.BLACK : COLORS.WHITE;
+        ctx.fillText(i, x + slotW / 2, startY + 16);
+        if (isDefeated) {
+            ctx.strokeStyle = COLORS.RED; ctx.lineWidth = 2; ctx.beginPath();
+            ctx.moveTo(x + 8, startY + 4); ctx.lineTo(x + slotW - 12, startY + 20);
+            ctx.moveTo(x + slotW - 12, startY + 4); ctx.lineTo(x + 8, startY + 20); ctx.stroke();
+        }
+    }
+    ctx.lineWidth = 1;
+}
+
 async function resolveTurn() {
     if (isProcessing) return;
     isProcessing = true;
 
-    // --- 1. PLAYER ATTACK PHASE ---
+    // --- Player Phase ---
     let eBlkArr = ["1","2","3","4","5"].sort(()=>.5-Math.random()).slice(0,2);
-    
     if(eBlkArr.includes(selAtk)) {
-        addLog(`Enemy BLOCKED your ${ZONE_NAMES[selAtk]}!`, COLORS.YELLOW);
+        addLog(`Enemy BLOCKED your ${ZONE_NAMES[selAtk]} strike!`, COLORS.YELLOW);
         spawnText("BLOCKED", 750, 300, COLORS.YELLOW);
     } else if (Math.random() < enemy.dodge) {
         addLog(`Enemy DODGED your strike!`, COLORS.WHITE);
@@ -120,26 +130,24 @@ async function resolveTurn() {
         let crit = Math.random() < player.crit;
         let headshot = (selAtk === "1");
         let d = Math.floor(player.dmg * (crit ? 2 : 1) * (headshot ? 1.4 : 1));
-        enemy.hp -= d;
-        shake = crit ? 15 : 6;
-        addLog(`${crit?'CRIT! ':''}${headshot?'HEADSHOT! ':''}Dealt ${d} damage!`, COLORS.RED); // Log in red for impact
-        spawnText(d + (crit ? "!!" : ""), 750, 250, COLORS.RED); // Floating text changed to RED per request
+        enemy.hp -= d; shake = crit ? 15 : 6;
+        addLog(`${crit?'CRIT! ':''}${headshot?'HEADSHOT! ':''}You dealt ${d} damage!`, COLORS.RED);
+        spawnText(d + (crit ? "!!" : ""), 750, 250, COLORS.RED);
     }
 
     await new Promise(r => setTimeout(r, 700));
 
-    // --- 2. ENEMY ATTACK PHASE ---
+    // --- Enemy Phase ---
     if(enemy.hp > 0) {
         let eAtk = Math.floor(Math.random()*5+1).toString();
         if(selBlk.includes(eAtk)) {
-            addLog(`You BLOCKED their ${ZONE_NAMES[eAtk]}!`, COLORS.CYAN);
+            addLog(`You BLOCKED their ${ZONE_NAMES[eAtk]} attack!`, COLORS.CYAN);
             spawnText("BLOCK", 180, 300, COLORS.CYAN);
         } else if (Math.random() < player.dodge) {
-            addLog(`You DODGED the attack!`, COLORS.WHITE);
+            addLog(`You DODGED the enemy attack!`, COLORS.WHITE);
             spawnText("DODGE", 180, 300, COLORS.WHITE);
         } else {
-            player.hp -= enemy.dmg;
-            shake = 10;
+            player.hp -= enemy.dmg; shake = 10;
             addLog(`Enemy hit your ${ZONE_NAMES[eAtk]} for ${enemy.dmg} dmg!`, COLORS.RED);
             spawnText("-" + enemy.dmg, 180, 250, COLORS.RED);
         }
@@ -150,40 +158,26 @@ async function resolveTurn() {
     checkEnd();
 }
 
-/**
- * --- RENDERING ---
- */
 function render() {
     ctx.save();
-    if (shake > 0) {
-        ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
-        shake *= 0.85; 
-        if (shake < 0.5) shake = 0;
-    }
-
-    ctx.fillStyle = COLORS.DARK_BG;
-    ctx.fillRect(0, 0, 960, 650);
-    pDisplayHp += (player.hp - pDisplayHp) * 0.1;
-    eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
+    if (shake > 0) { ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2); shake *= 0.85; }
+    ctx.fillStyle = COLORS.DARK_BG; ctx.fillRect(0, 0, 960, 650);
+    pDisplayHp += (player.hp - pDisplayHp) * 0.1; eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
 
     if (state === "menu") drawMenu();
-    else if (state === "combat") drawCombat();
-    else if (state === "inventory") drawInventory();
-    else if (state === "gameover" || state === "victory") drawEnd();
+    else {
+        if (state === "combat") drawCombat();
+        else if (state === "inventory") drawInventory();
+        else if (state === "gameover" || state === "victory") drawEnd();
+        if (state !== "gameover" && state !== "victory") drawProgressBar();
+    }
 
     particles.forEach((p, i) => {
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.col;
-        ctx.font = "bold 28px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(p.txt, p.x, p.y);
-        p.y += p.vy;
-        p.life -= 0.02;
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.col; ctx.font = "bold 28px Arial"; ctx.textAlign = "center";
+        ctx.fillText(p.txt, p.x, p.y); p.y += p.vy; p.life -= 0.02;
         if (p.life <= 0) particles.splice(i, 1);
     });
-    ctx.globalAlpha = 1.0;
-
-    ctx.restore();
+    ctx.globalAlpha = 1.0; ctx.restore();
     requestAnimationFrame(render);
 }
 
@@ -196,39 +190,30 @@ function drawCombat() {
     ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
     let defLeft = 2 - selBlk.length;
     ctx.fillStyle = defLeft === 0 ? COLORS.GREEN : COLORS.CYAN;
-    ctx.fillText(defLeft === 0 ? "STANCE READY" : `BLOCK 2 ZONES (${defLeft})`, 345, 140);
-    
-    let atkLeft = selAtk ? 0 : 1;
-    ctx.fillStyle = atkLeft === 0 ? COLORS.GREEN : COLORS.RED;
-    ctx.fillText(atkLeft === 0 ? "TARGET LOCKED" : "AIM 1 ATTACK", 615, 140);
+    ctx.fillText(defLeft === 0 ? "READY" : `BLOCK (${defLeft})`, 345, 140);
+    ctx.fillStyle = selAtk ? COLORS.GREEN : COLORS.RED;
+    ctx.fillText(selAtk ? "LOCKED" : "AIM 1", 615, 140);
 
     for(let i=1; i<=5; i++) {
-        const id = i.toString();
-        const yBase = 150 + (i-1) * 75;
+        const id = i.toString(), y = 150 + (i-1) * 75;
         ctx.fillStyle = selBlk.includes(id) ? COLORS.CYAN : "rgba(40, 40, 60, 0.7)";
-        ctx.fillRect(310, yBase, 70, 70); 
-        drawSprite(`icon_${id}`, 315, yBase + 5, 60, 60, ZONE_NAMES[id]);
+        ctx.fillRect(310, y, 70, 70); drawSprite(`icon_${id}`, 315, y+5, 60, 60, ZONE_NAMES[id]);
         ctx.fillStyle = selAtk === id ? COLORS.RED : "rgba(40, 40, 60, 0.7)";
-        ctx.fillRect(580, yBase, 70, 70);
-        drawSprite(`icon_${id}`, 585, yBase + 5, 60, 60, ZONE_NAMES[id]);
+        ctx.fillRect(580, y, 70, 70); drawSprite(`icon_${id}`, 585, y+5, 60, 60, ZONE_NAMES[id]);
     }
 
     if(selAtk && selBlk.length === 2 && !isProcessing) {
         ctx.fillStyle = COLORS.GOLD; ctx.fillRect(430, 495, 100, 45);
-        ctx.fillStyle = COLORS.BLACK; ctx.textAlign = "center"; ctx.font = "bold 18px Arial";
-        ctx.fillText("FIGHT", 480, 525);
+        ctx.fillStyle = COLORS.BLACK; ctx.fillText("FIGHT", 480, 525);
     }
 
-    // Skill Points Alert
     if (player.points > 0) {
-        let pulse = 0.6 + Math.abs(Math.sin(Date.now() / 300)) * 0.4;
-        ctx.fillStyle = `rgba(255, 215, 0, ${pulse})`; ctx.textAlign = "left"; ctx.font = "bold 14px Arial";
+        ctx.fillStyle = COLORS.GOLD; ctx.textAlign = "left";
         ctx.fillText(`${player.points} PT(S) AVAILABLE!`, 40, 515);
     }
 
     ctx.fillStyle = COLORS.GRAY; ctx.fillRect(40, 465, 180, 40);
-    ctx.fillStyle = COLORS.BLACK; ctx.textAlign = "center"; ctx.font = "bold 14px Arial";
-    ctx.fillText("ARMORY (I)", 130, 490);
+    ctx.fillStyle = COLORS.BLACK; ctx.textAlign = "center"; ctx.fillText("ARMORY (I)", 130, 490);
 
     ctx.fillStyle = COLORS.LOG_BG; ctx.fillRect(20, 545, 920, 95);
     log.slice(-5).forEach((m, i) => {
@@ -239,21 +224,14 @@ function drawCombat() {
 
 function drawInventory() {
     ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 30px Arial";
-    ctx.fillText("HERO'S ARMORY", 480, 60);
-    ctx.fillStyle = "rgba(40, 40, 60, 0.95)"; ctx.fillRect(50, 100, 350, 480);
-    ctx.textAlign = "left"; ctx.font = "bold 18px Arial"; ctx.fillStyle = COLORS.GOLD;
-    ctx.fillText("STATS", 75, 135);
-
-    if (player.points > 0) {
-        let pulse = 0.5 + Math.abs(Math.sin(Date.now() / 300)) * 0.5;
-        ctx.fillStyle = `rgba(70, 255, 70, ${pulse})`; ctx.font = "bold 14px Arial";
-        ctx.fillText(`${player.points} UNSPENT SKILL POINTS!`, 75, 158);
-    }
+    ctx.fillText("HERO'S ARMORY", 480, 80);
+    ctx.fillStyle = COLORS.PANEL; ctx.fillRect(50, 110, 350, 470);
+    ctx.textAlign = "left"; ctx.font = "bold 18px Arial"; ctx.fillText("STATS", 75, 145);
 
     ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
         let total = player[s] + player.bonus[s];
         ctx.font = "16px Arial"; ctx.fillStyle = COLORS.WHITE;
-        ctx.fillText(`${s}: ${total} (${player[s]} + ${player.bonus[s]})`, 75, 195 + i*32);
+        ctx.fillText(`${s}: ${total}`, 75, 195 + i*32);
         if(player.points > 0) {
             ctx.fillStyle = COLORS.GREEN; ctx.fillRect(340, 178 + i*32, 22, 22);
             ctx.fillStyle = COLORS.BLACK; ctx.textAlign = "center"; ctx.fillText("+", 351, 195 + i*32);
@@ -261,11 +239,10 @@ function drawInventory() {
         }
     });
 
-    drawSlot(75, 340, "WEAPON", player.weapon);
-    drawSlot(225, 340, "ARMOR", player.armor);
-    ctx.fillStyle = "rgba(10, 10, 20, 0.9)"; ctx.fillRect(430, 100, 480, 410);
+    drawSlot(75, 340, "WEAPON", player.weapon); drawSlot(225, 340, "ARMOR", player.armor);
+    ctx.fillStyle = "rgba(10, 10, 20, 0.9)"; ctx.fillRect(430, 110, 480, 400);
     player.inventory.forEach((item, i) => {
-        const x = 450 + (i % 5) * 90; const y = 120 + Math.floor(i / 5) * 90;
+        const x = 450 + (i % 5) * 90, y = 130 + Math.floor(i / 5) * 90;
         const isEq = (player.weapon === item || player.armor === item);
         ctx.fillStyle = COLORS.SLOT_BG; ctx.fillRect(x, y, 80, 80);
         ctx.strokeStyle = (isEq ? COLORS.CYAN : COLORS.GRAY); ctx.strokeRect(x, y, 80, 80);
@@ -278,10 +255,32 @@ function drawInventory() {
 
 function drawMenu() {
     ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 50px Arial";
-    ctx.fillText("GAUNTLET ARENA", 480, 150);
-    ctx.fillStyle = COLORS.WHITE; ctx.font = "20px Arial"; ctx.fillText("ENTER NAME & PRESS ENTER", 480, 280);
-    ctx.fillStyle = "#28283C"; ctx.fillRect(330, 300, 300, 50);
-    ctx.fillStyle = COLORS.CYAN; ctx.fillText(userName + (Math.floor(Date.now()/500)%2==0?"|":""), 480, 332);
+    ctx.fillText("GAUNTLET ARENA", 480, 250);
+    ctx.fillStyle = COLORS.WHITE; ctx.font = "20px Arial"; ctx.fillText("ENTER NAME & PRESS ENTER", 480, 320);
+    ctx.fillStyle = "#28283C"; ctx.fillRect(330, 340, 300, 50);
+    ctx.fillStyle = COLORS.CYAN; ctx.fillText(userName + (Math.floor(Date.now()/500)%2==0?"|":""), 480, 372);
+}
+
+function drawEnd() {
+    ctx.fillStyle = "rgba(0,0,0,0.9)"; ctx.fillRect(0,0,960,650);
+    ctx.textAlign = "center"; ctx.fillStyle = state === "gameover" ? COLORS.RED : COLORS.GOLD;
+    ctx.font = "bold 60px Arial"; ctx.fillText(state === "gameover" ? "DEFEATED" : "GAUNTLET CONQUERED", 480, 120);
+    
+    ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Arial";
+    ctx.fillText(`FINAL SCORE: ${score}`, 480, 180);
+
+    // Scoreboard
+    ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.fillRect(330, 220, 300, 220);
+    ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 18px Arial"; ctx.fillText("HALL OF FAME", 480, 250);
+    highScores.slice(0, 5).forEach((entry, i) => {
+        ctx.fillStyle = COLORS.WHITE; ctx.font = "16px monospace";
+        ctx.textAlign = "left"; ctx.fillText(`${i+1}. ${entry.name}`, 350, 290 + i*25);
+        ctx.textAlign = "right"; ctx.fillText(`${entry.score}`, 610, 290 + i*25);
+    });
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.GREEN; ctx.fillRect(380, 480, 200, 60);
+    ctx.fillStyle = COLORS.BLACK; ctx.font = "bold 20px Arial"; ctx.fillText("NEW JOURNEY", 480, 518);
 }
 
 function drawSlot(x, y, label, item) {
@@ -293,44 +292,24 @@ function drawSlot(x, y, label, item) {
 }
 
 function drawTooltip(item, x, y) {
-    const tw = 240, th = 140;
-    ctx.fillStyle = "rgba(0,0,0,0.95)"; ctx.fillRect(x+20, y+20, tw, th);
-    ctx.strokeStyle = COLORS[`RARITY_${item.rarity}`]; ctx.strokeRect(x+20, y+20, tw, th);
-    ctx.textAlign = "left"; ctx.fillStyle = COLORS[`RARITY_${item.rarity}`]; ctx.font = "bold 16px Arial";
-    ctx.fillText(item.name, x+30, y+45);
+    ctx.fillStyle = "black"; ctx.fillRect(x+20, y+20, 200, 100);
+    ctx.strokeStyle = COLORS[`RARITY_${item.rarity}`]; ctx.strokeRect(x+20, y+20, 200, 100);
+    ctx.fillStyle = "white"; ctx.textAlign = "left"; ctx.font = "14px Arial"; ctx.fillText(item.name, x+30, y+45);
     const stats = item.type === "weapon" ? ["STR", "LUCK"] : ["STA", "DEX"];
-    stats.forEach((s, i) => {
-        ctx.font = "12px Arial"; ctx.fillStyle = COLORS.WHITE;
-        ctx.fillText(`${s}: ${item[s]}`, x+30, y+75 + i*20);
-    });
-}
-
-function drawEnd() {
-    ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0,0,960,650);
-    ctx.textAlign = "center"; ctx.fillStyle = state === "gameover" ? COLORS.RED : COLORS.GOLD;
-    ctx.font = "bold 55px Arial"; ctx.fillText(state === "gameover" ? "DEFEATED" : "ASCENDED", 480, 150);
-    ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Arial"; ctx.fillText(`FINAL SCORE: ${score}`, 480, 210);
-    ctx.fillStyle = COLORS.GREEN; ctx.fillRect(380, 300, 200, 60);
-    ctx.fillStyle = COLORS.BLACK; ctx.textAlign = "center"; ctx.fillText("NEW JOURNEY", 480, 338);
+    stats.forEach((s, i) => ctx.fillText(`${s}: ${item[s]}`, x+30, y+70 + i*15));
 }
 
 function drawHealthBar(x, y, w, val, max, name) {
     ctx.fillStyle = "rgba(200, 50, 50, 0.3)"; ctx.fillRect(x, y, w, 20);
     ctx.fillStyle = COLORS.GREEN; ctx.fillRect(x, y, w * (Math.max(0, val)/max), 20);
     ctx.strokeStyle = "white"; ctx.strokeRect(x, y, w, 20);
-    ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 12px Arial"; ctx.textAlign = "left";
-    ctx.fillText(`${name} HP: ${Math.max(0, Math.floor(val))}/${max}`, x, y - 8);
+    ctx.fillStyle = "white"; ctx.font = "bold 12px Arial"; ctx.textAlign = "left";
+    ctx.fillText(`${name}: ${Math.floor(val)}/${max}`, x, y - 8);
 }
 
 function drawSprite(key, x, y, w, h, label, color) {
-    if (assets[key] && assets[key].complete && assets[key].naturalWidth !== 0) {
-        ctx.drawImage(assets[key], x, y, w, h);
-    } else {
-        ctx.fillStyle = color || "rgba(50, 50, 50, 0.5)";
-        ctx.fillRect(x, y, w, h);
-        ctx.fillStyle = "white"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
-        ctx.fillText(label || key, x + w/2, y + h/2);
-    }
+    if (assets[key] && assets[key].complete) ctx.drawImage(assets[key], x, y, w, h);
+    else { ctx.fillStyle = color || "#323232"; ctx.fillRect(x, y, w, h); ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.fillText(label || key, x + w/2, y + h/2); }
 }
 
 function addLog(txt, col) { log.push({txt, col}); if(log.length > 50) log.shift(); }
@@ -338,32 +317,29 @@ function addLog(txt, col) { log.push({txt, col}); if(log.length > 50) log.shift(
 function checkEnd() {
     if(enemy.hp <= 0) {
         score += (currentLvl * 100);
-        if(currentLvl === 10) { state = "victory"; saveScore(); }
+        if(currentLvl === 10) { saveScore(); state = "victory"; }
         else {
-            currentLvl++; startLevel(currentLvl); player.hp = player.maxHp;
-            player.points += 2;
+            currentLvl++; startLevel(currentLvl); player.hp = player.maxHp; player.points += 2;
             const item = ALL_ITEMS[Math.floor(Math.random()*ALL_ITEMS.length)];
-            player.inventory.push(item);
-            addLog(`Victory! Found ${item.name}.`, COLORS.GOLD);
+            player.inventory.push(item); 
+            addLog(`VICTORY! Found ${item.name} and 2 Skill Points.`, COLORS.GOLD);
         }
-    } else if(player.hp <= 0) { state = "gameover"; saveScore(); }
+    } else if(player.hp <= 0) { saveScore(); state = "gameover"; }
 }
 
 function saveScore() {
     highScores.push({name: userName || "Hero", score: score});
     highScores.sort((a,b) => b.score - a.score);
-    localStorage.setItem('gauntletScores', JSON.stringify(highScores.slice(0, 5)));
+    highScores = highScores.slice(0, 5);
+    localStorage.setItem('gauntletScores', JSON.stringify(highScores));
 }
 
-/**
- * --- EVENT LISTENERS ---
- */
 canvas.addEventListener('mousemove', e => {
     const r = canvas.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top;
     hoveredItem = null;
     if (state === "inventory") {
         player.inventory.forEach((item, i) => {
-            const x = 450 + (i % 5) * 90; const y = 120 + Math.floor(i / 5) * 90;
+            const x = 450 + (i % 5) * 90, y = 130 + Math.floor(i / 5) * 90;
             if (mx > x && mx < x + 80 && my > y && my < y + 80) { hoveredItem = item; tooltipPos = {x: mx, y: my}; }
         });
     }
@@ -380,11 +356,10 @@ canvas.addEventListener('mousedown', e => {
         });
         if(mx > 430 && mx < 580 && my > 530 && my < 570) state = "combat";
         player.inventory.forEach((item, i) => {
-            const x = 450 + (i % 5) * 90; const y = 120 + Math.floor(i / 5) * 90;
+            const x = 450 + (i % 5) * 90, y = 130 + Math.floor(i / 5) * 90;
             if (mx > x && mx < x + 80 && my > y && my < y + 80) {
-                let oldMax = player.maxHp;
                 if(item.type === "weapon") player.weapon = item; else player.armor = item;
-                calcStats(); if(item.type === "armor") player.hp += (player.maxHp - oldMax);
+                calcStats();
             }
         });
     } else if (state === "combat" && !isProcessing) {
@@ -399,7 +374,7 @@ canvas.addEventListener('mousedown', e => {
         }
         if(selAtk && selBlk.length === 2 && mx > 430 && mx < 530 && my > 495 && my < 540) resolveTurn();
     } else if (state === "gameover" || state === "victory") {
-        if(mx > 380 && mx < 580 && my > 300 && my < 360) { state = "menu"; userName = ""; score = 0; currentLvl = 1; }
+        if(mx > 380 && mx < 580 && my > 480 && my < 540) { state = "menu"; userName = ""; score = 0; currentLvl = 1; }
     }
 });
 
@@ -409,7 +384,6 @@ window.addEventListener('keydown', e => {
         else if(e.key === "Backspace") userName = userName.slice(0, -1);
         else if(userName.length < 12 && e.key.length === 1) userName += e.key;
     }
-    // HOTKEY: (I) toggles the Armory
     if(e.key.toLowerCase() === 'i' && (state === "combat" || state === "inventory")) state = (state === "combat" ? "inventory" : "combat");
 });
 
