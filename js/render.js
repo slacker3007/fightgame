@@ -3,7 +3,7 @@ function drawStyledBtn(x, y, w, h, txt, baseCol) {
     ctx.fillStyle = baseCol; ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = COLORS.CYAN; ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
     ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 16px Arial"; ctx.textAlign = "center";
-    ctx.fillText(txt, x + w / 2, y + h / 2 + 6);
+    ctx.fillText(txt || "???", x + w / 2, y + h / 2 + 6);
 }
 
 function drawProgressBar() {
@@ -18,9 +18,9 @@ function drawProgressBar() {
             ctx.strokeStyle = COLORS.RED; ctx.lineWidth = 2; ctx.beginPath();
             ctx.moveTo(x + 8, startY + 4); ctx.lineTo(x + slotW - 12, startY + 20);
             ctx.moveTo(x + slotW - 12, startY + 4); ctx.lineTo(x + 8, startY + 20); ctx.stroke();
+            ctx.lineWidth = 1;
         }
     }
-    ctx.lineWidth = 1;
 }
 
 function drawHealthBar(x, y, w, val, max, name) {
@@ -33,7 +33,11 @@ function drawHealthBar(x, y, w, val, max, name) {
 
 function drawSprite(key, x, y, w, h, label, color) {
     if (assets[key] && assets[key].complete) ctx.drawImage(assets[key], x, y, w, h);
-    else { ctx.fillStyle = color || "#323232"; ctx.fillRect(x, y, w, h); ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.fillText(label || key, x + w/2, y + h/2); }
+    else { 
+        ctx.fillStyle = color || "#323232"; ctx.fillRect(x, y, w, h); 
+        ctx.fillStyle = "white"; ctx.textAlign = "center"; 
+        ctx.fillText(label || key, x + w/2, y + h/2); 
+    }
 }
 
 function drawSlot(x, y, label, item) {
@@ -54,15 +58,15 @@ function drawMenu() {
 
 function drawCamp() {
     ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 40px Arial";
-    ctx.fillText(`CAMP - PREPARING FOR STAGE ${currentLvl}`, 480, 100);
+    ctx.fillText(`CAMP - STAGE ${currentLvl}`, 480, 100);
     ctx.fillStyle = COLORS.PANEL; ctx.fillRect(100, 150, 760, 350);
     drawSprite('player', 150, 200, 250, 250, "HERO");
     ctx.textAlign = "left"; ctx.font = "bold 24px Arial"; ctx.fillStyle = COLORS.CYAN;
     ctx.fillText(userName.toUpperCase(), 450, 220);
     ctx.fillStyle = COLORS.WHITE; ctx.font = "18px Arial";
-    ctx.fillText(`MAX HP: ${player.maxHp}`, 450, 260); ctx.fillText(`ATTACK: ${player.dmg}`, 450, 290);
-    drawStyledBtn(450, 380, 180, 50, "ARMORY (I)", COLORS.GRAY);
-    drawStyledBtn(650, 380, 180, 50, "FIGHT!", COLORS.GREEN);
+    ctx.fillText(`MAX HP: ${player.maxHp}`, 450, 260); 
+    ctx.fillText(`ATTACK: ${player.dmg}`, 450, 290);
+    uiButtons.forEach(btn => btn.state === "camp" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 }
 
 function drawCombat() {
@@ -78,10 +82,10 @@ function drawCombat() {
         ctx.fillStyle = selAtk === id ? COLORS.RED : "rgba(40, 40, 60, 0.7)";
         ctx.fillRect(580, y, 70, 70); drawSprite(`icon_${id}`, 585, y+5, 60, 60, ZONE_NAMES[id]);
     }
+    uiButtons.forEach(btn => btn.state === "combat" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 
-    if(selAtk && selBlk.length === 2) {
-        if(!isProcessing) drawStyledBtn(430, 495, 100, 45, "FIGHT", COLORS.GOLD);
-    } else {
+    // RESTORED: Instruction text for combat
+    if(!(selAtk && selBlk.length === 2) && !isProcessing) {
         ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
         let msg = "Select 2 DEFENSE and 1 ATTACK area";
         if (selBlk.length < 2) msg = `Select ${2 - selBlk.length} more DEFENSE areas`;
@@ -97,19 +101,16 @@ function drawCombat() {
 }
 
 function drawInventory() {
-    // 1. LEFT PANEL: Player Stats & Equipped Slots
     ctx.fillStyle = COLORS.PANEL; ctx.fillRect(50, 110, 350, 470);
     ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
         ctx.fillStyle = COLORS.WHITE; ctx.textAlign = "left"; ctx.font = "bold 18px Arial";
         ctx.fillText(`${s}: ${player[s] + player.bonus[s]}`, 75, 195 + i*32);
         if(player.points > 0) {
             ctx.fillStyle = COLORS.GREEN; ctx.fillRect(340, 178 + i*32, 22, 22);
-            ctx.fillStyle = COLORS.WHITE; ctx.fillText("+", 345, 195 + i*32);
+            ctx.fillStyle = COLORS.WHITE; ctx.textAlign = "center"; ctx.fillText("+", 351, 195 + i*32);
         }
     });
     drawSlot(75, 340, "WEAPON", player.weapon); drawSlot(225, 340, "ARMOR", player.armor);
-    
-    // 2. RIGHT PANEL: The Item Grid
     ctx.fillStyle = "rgba(10, 10, 20, 0.9)"; ctx.fillRect(430, 110, 480, 400);
     player.inventory.forEach((item, i) => {
         const x = 450 + (i % 5) * 90, y = 130 + Math.floor(i / 5) * 90;
@@ -118,44 +119,24 @@ function drawInventory() {
         ctx.fillRect(x, y, 80, 80);
         drawSprite(item.name, x+10, y+10, 60, 60, item.name.substring(0,2), COLORS[`RARITY_${item.rarity}`]);
     });
-
-    // 3. DETAILS OVERLAY: Prevents overlapping with the grid
     if (selectedInvItem) {
-        // Clear the right-side area with a solid sub-panel
-        ctx.fillStyle = "#1a1a2e"; 
-        ctx.fillRect(600, 110, 310, 400); 
-        ctx.strokeStyle = COLORS.GOLD;
-        ctx.strokeRect(600, 110, 310, 400);
+        ctx.fillStyle = "#1a1a2e"; ctx.fillRect(600, 110, 310, 400); 
+        ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(600, 110, 310, 400);
+        ctx.fillStyle = COLORS.RED; ctx.fillRect(875, 115, 30, 30); 
+        ctx.fillStyle = COLORS.WHITE; ctx.textAlign = "center"; ctx.fillText("X", 890, 137);
 
-        // Name and Stats
-        ctx.fillStyle = COLORS[`RARITY_${selectedInvItem.rarity}`];
-        ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
+        // RESTORED: Weapon/Armor stat descriptions
+        ctx.fillStyle = COLORS[`RARITY_${selectedInvItem.rarity}`]; ctx.font = "bold 20px Arial";
         ctx.fillText(selectedInvItem.name.toUpperCase(), 755, 150);
-        
-        ctx.fillStyle = COLORS.WHITE; ctx.font = "18px Arial"; ctx.textAlign = "left";
-        let statY = 200;
+        let sy = 200;
         ["STR", "DEX", "STA", "LUCK"].forEach(s => {
-            if (selectedInvItem[s] !== undefined) {
-                const val = selectedInvItem[s];
-                ctx.fillStyle = val >= 0 ? COLORS.GREEN : COLORS.RED;
-                ctx.fillText(`${s}: ${val >= 0 ? "+" : ""}${val}`, 650, statY);
-                statY += 30;
+            if(selectedInvItem[s]) {
+                ctx.fillStyle = COLORS.WHITE; ctx.textAlign = "left";
+                ctx.fillText(`${s}: +${selectedInvItem[s]}`, 630, sy); sy += 30;
             }
         });
-
-        const isEq = (player.weapon === selectedInvItem || player.armor === selectedInvItem);
-        drawStyledBtn(680, 440, 150, 45, isEq ? "REMOVE" : "EQUIP", COLORS.BTN_BLUE);
-
-        // Inside if (selectedInvItem) block in drawInventory()
-        ctx.fillStyle = COLORS.RED;
-        ctx.fillRect(875, 115, 30, 30); // Positioned at the top right of the detail panel
-        ctx.fillStyle = COLORS.WHITE;
-        ctx.font = "bold 20px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("X", 890, 137);
     }
-
-    drawStyledBtn(430, 530, 150, 40, "BACK", COLORS.GRAY);
+    uiButtons.forEach(btn => btn.state === "inventory" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 }
 
 function drawEnd() {
@@ -164,27 +145,9 @@ function drawEnd() {
     const isVictory = state === "victory";
     ctx.fillStyle = isVictory ? COLORS.GOLD : COLORS.RED;
     ctx.font = "bold 60px Arial"; ctx.fillText(isVictory ? "VICTORY" : "DEFEATED", 480, 100);
-
-    ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.fillRect(330, 140, 300, 300);
-    ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(330, 140, 300, 300);
-
-    ctx.fillStyle = COLORS.CYAN; ctx.font = "bold 24px Arial";
-    ctx.fillText("HIGH SCORES", 480, 175);
-
-    ctx.font = "18px monospace";
-    highScores.forEach((s, i) => {
-        const yPos = 220 + (i * 35);
-        ctx.textAlign = "left";
-        ctx.fillStyle = s.name === userName ? COLORS.GOLD : COLORS.WHITE;
-        ctx.fillText(`${i + 1}. ${s.name.padEnd(12, '.')}`, 350, yPos);
-        ctx.textAlign = "right"; ctx.fillText(s.score.toString(), 610, yPos);
+    highScores.slice(0, 5).forEach((s, i) => {
+        ctx.fillStyle = COLORS.WHITE; ctx.font = "18px monospace";
+        ctx.fillText(`${i+1}. ${s.name}: ${s.score}`, 480, 200 + i*30);
     });
-
-    if (highScores.length === 0) {
-        ctx.textAlign = "center"; ctx.fillStyle = COLORS.GRAY;
-        ctx.fillText("No scores yet", 480, 280);
-    }
-
-    ctx.textAlign = "center";
-    drawStyledBtn(380, 480, 200, 60, "NEW JOURNEY", COLORS.GREEN);
+    uiButtons.forEach(btn => btn.state === state && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 }
