@@ -1,9 +1,40 @@
+/**
+ * render.js - Graphics & UI Output
+ */
+
 function drawStyledBtn(x, y, w, h, txt, baseCol) {
     ctx.fillStyle = COLORS.GOLD; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
     ctx.fillStyle = baseCol; ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = COLORS.CYAN; ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
     ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 16px Arial"; ctx.textAlign = "center";
     ctx.fillText(txt || "???", x + w / 2, y + h / 2 + 6);
+}
+
+function drawLevelUp() {
+    if (levelUpTimer <= 0) return;
+    
+    ctx.save();
+    // Fade in and out effect
+    ctx.globalAlpha = Math.min(1, levelUpTimer / 30);
+    
+    // Banner Background
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillRect(0, 250, 960, 100);
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(0, 250, 960, 100);
+    
+    // Text
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 48px Arial";
+    ctx.fillText("STAGE CLEAR! LEVEL UP", 480, 310);
+    ctx.font = "bold 18px Arial";
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.fillText("+2 STAT POINTS & NEW ITEM RECEIVED", 480, 335);
+    
+    ctx.restore();
+    levelUpTimer--;
 }
 
 function drawProgressBar() {
@@ -67,6 +98,7 @@ function drawCamp() {
     ctx.fillText(`MAX HP: ${player.maxHp}`, 450, 260); 
     ctx.fillText(`ATTACK: ${player.dmg}`, 450, 290);
     uiButtons.forEach(btn => btn.state === "camp" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
+    drawLevelUp(); // Check if banner should draw here
 }
 
 function drawCombat() {
@@ -84,7 +116,6 @@ function drawCombat() {
     }
     uiButtons.forEach(btn => btn.state === "combat" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 
-    // RESTORED: Instruction text for combat
     if(!(selAtk && selBlk.length === 2) && !isProcessing) {
         ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
         let msg = "Select 2 DEFENSE and 1 ATTACK area";
@@ -125,7 +156,6 @@ function drawInventory() {
         ctx.fillStyle = COLORS.RED; ctx.fillRect(875, 115, 30, 30); 
         ctx.fillStyle = COLORS.WHITE; ctx.textAlign = "center"; ctx.fillText("X", 890, 137);
 
-        // RESTORED: Weapon/Armor stat descriptions
         ctx.fillStyle = COLORS[`RARITY_${selectedInvItem.rarity}`]; ctx.font = "bold 20px Arial";
         ctx.fillText(selectedInvItem.name.toUpperCase(), 755, 150);
         let sy = 200;

@@ -1,3 +1,7 @@
+/**
+ * main.js - Event Handling & Game Loop
+ */
+
 let uiButtons = [];
 
 function createButton(x, y, w, h, stateReq, label, color, action) {
@@ -71,7 +75,6 @@ window.addEventListener('keydown', e => {
         else if(e.key === "Backspace") userName = userName.slice(0, -1);
         else if(userName.length < 12 && e.key.length === 1) userName += e.key;
     }
-    if(e.key.toLowerCase() === 'i' && (state === "camp" || state === "inventory")) state = (state === "inventory" ? "camp" : "inventory");
 });
 
 function gameLoop() {

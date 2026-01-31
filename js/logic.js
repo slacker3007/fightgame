@@ -1,3 +1,7 @@
+/**
+ * logic.js - Core Game Mechanics
+ */
+
 function initPlayer() {
     player = { 
         STR: 5, DEX: 5, STA: 5, LUCK: 5, 
@@ -40,7 +44,7 @@ async function resolveTurn() {
     isProcessing = true;
     let eBlkArr = ["1","2","3","4","5"].sort(()=>.5-Math.random()).slice(0,2);
     if(eBlkArr.includes(selAtk)) {
-        addLog(`Enemy BLOCKED your attack!`, COLORS.YELLOW);
+        addLog(`Enemy BLOCKED!`, COLORS.YELLOW);
         spawnText("BLOCKED", 750, 300, COLORS.YELLOW);
         shake = 4; 
     } else {
@@ -72,12 +76,14 @@ async function resolveTurn() {
 function checkEnd() {
     if(enemy.hp <= 0) {
         score += (currentLvl * 100);
-        if(currentLvl === 10) { saveScore(); state = "victory"; }
-        else {
+        if(currentLvl === 10) { 
+            saveScore(); state = "victory"; 
+        } else {
             const item = ALL_ITEMS[Math.floor(Math.random()*ALL_ITEMS.length)];
             player.inventory.push(item); 
             player.points += 2;
             player.hp = player.maxHp;
+            levelUpTimer = 120; // Trigger the banner (2 seconds at 60fps)
             state = "camp";
         }
     } else if(player.hp <= 0) { saveScore(); state = "gameover"; }
