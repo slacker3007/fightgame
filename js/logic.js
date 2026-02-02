@@ -1,13 +1,9 @@
-/**
- * logic.js - Core Game Mechanics
- */
-
 function initPlayer() {
     player = { 
         STR: 5, DEX: 5, STA: 5, LUCK: 5, 
         hp: 0, maxHp: 0, 
         weapon: null, armor: null, 
-        inventory: [], points: 0, bonus: {} 
+        inventory: [], materials: 0, points: 0, bonus: {} 
     };
     calcStats();
     player.hp = player.maxHp; 
@@ -76,17 +72,25 @@ async function resolveTurn() {
 function checkEnd() {
     if(enemy.hp <= 0) {
         score += (currentLvl * 100);
+        
         if(currentLvl === 10) { 
-            saveScore(); state = "victory"; 
+            saveScore(); 
+            state = "victory"; 
         } else {
-            const item = ALL_ITEMS[Math.floor(Math.random()*ALL_ITEMS.length)];
-            player.inventory.push(item); 
+            // Reward Materials
+            player.materials += (currentLvl * 5); 
             player.points += 2;
             player.hp = player.maxHp;
-            levelUpTimer = 120; // Trigger the banner (2 seconds at 60fps)
-            state = "camp";
+            
+            levelUpTimer = 120; 
+            state = "camp"; 
+            // Note: We do NOT increment currentLvl here anymore. 
+            // The Battle button in main.js will do that.
         }
-    } else if(player.hp <= 0) { saveScore(); state = "gameover"; }
+    } else if(player.hp <= 0) { 
+        saveScore(); 
+        state = "gameover"; 
+    }
 }
 
 function addLog(txt, col) { log.push({txt, col}); if(log.length > 50) log.shift(); }
@@ -96,4 +100,34 @@ function saveScore() {
     highScores.push({name: userName || "Hero", score: score});
     highScores.sort((a,b) => b.score - a.score);
     localStorage.setItem('gauntletScores', JSON.stringify(highScores.slice(0, 5)));
+}
+
+function craftItem() {
+    const CRAFT_COST = 10;
+
+    if (player.materials < CRAFT_COST) {
+        addLog("Not enough materials! Need 10.", COLORS.RED);
+        spawnText("NEED MATERIALS", 480, 300, COLORS.RED);
+        return;
+    }
+
+    // Deduct cost
+    player.materials -= CRAFT_COST;
+
+    // Determine Rarity based on chance
+    const roll = Math.random();
+    let targetRarity = "COMMON";
+    if (roll < 0.10) targetRarity = "EPIC";
+    else if (roll < 0.30) targetRarity = "RARE";
+
+    // Filter ALL_ITEMS for that rarity
+    const possibleItems = ALL_ITEMS.filter(item => item.rarity === targetRarity);
+    const newItem = JSON.parse(JSON.stringify(possibleItems[Math.floor(Math.random() * possibleItems.length)]));
+
+    // Add to inventory
+    player.inventory.push(newItem);
+    
+    // Feedback
+    addLog(`Forged a ${targetRarity} ${newItem.name}!`, COLORS[`RARITY_${targetRarity}`]);
+    spawnText("CRAFTED!", 480, 250, COLORS.GOLD);
 }
