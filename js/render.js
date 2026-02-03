@@ -55,9 +55,9 @@ function drawHealthBar(x, y, w, val, max, name) {
 function drawSprite(key, x, y, w, h, label, color) {
     if (assets[key] && assets[key].complete) ctx.drawImage(assets[key], x, y, w, h);
     else { 
-        ctx.fillStyle = color || "#323232"; ctx.fillRect(x, y, w, h); 
+        ctx.fillStyle = color || "#323232"; ctx.fillRect(x, y, w, h);
         ctx.fillStyle = "white"; ctx.font = "12px Arial"; ctx.textAlign = "center"; 
-        ctx.fillText(label || key, x + w/2, y + h/2); 
+        ctx.fillText(label || key, x + w/2, y + h/2);
     }
 }
 
@@ -79,40 +79,30 @@ function drawMenu() {
 
 function drawCamp() {
     ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 45px Arial";
-    ctx.fillText("MAIN CAMP", 480, 100);
+    ctx.fillText("MAIN CAMP", 480, 80);
     ctx.font = "bold 20px Arial"; ctx.fillStyle = COLORS.WHITE;
-    ctx.fillText(`Progress: Stage ${currentLvl}/10`, 480, 140);
+    ctx.fillText(`Stage Progress: ${currentLvl} / 10`, 480, 120);
     ctx.fillStyle = COLORS.CYAN;
-    ctx.fillText(`Materials: ${player.materials}`, 480, 175);
-    ctx.strokeStyle = "rgba(255, 215, 0, 0.3)";
-    ctx.beginPath(); ctx.moveTo(100, 200); ctx.lineTo(860, 200); ctx.stroke();
+    ctx.fillText(`Ore: ${player.ore}`, 480, 160);
+    if (assets['ore'] && assets['ore'].complete) ctx.drawImage(assets['ore'], 410, 140, 25, 25);
     uiButtons.forEach(btn => btn.state === "camp" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
     drawLevelUp();
 }
 
 function drawForge() {
-    ctx.textAlign = "center"; ctx.fillStyle = "#A335EE"; ctx.font = "bold 45px Arial";
-    ctx.fillText("THE FORGE", 480, 80);
-    ctx.fillStyle = "rgba(30, 30, 40, 0.9)";
-    ctx.fillRect(200, 140, 560, 220);
-    ctx.strokeStyle = COLORS.GOLD; ctx.lineWidth = 3;
-    ctx.strokeRect(200, 140, 560, 220);
-    ctx.fillStyle = COLORS.WHITE; ctx.font = "24px Arial";
-    ctx.fillText(`Scrap Materials: ${player.materials}`, 480, 200);
-    ctx.font = "16px Arial"; ctx.fillStyle = COLORS.GRAY;
-    ctx.fillText("10 Scrap = 1 Random Item", 480, 230);
-    ctx.font = "bold 14px Arial";
-    ctx.fillStyle = COLORS.RARITY_COMMON; ctx.fillText("Common: 70%", 400, 270);
-    ctx.fillStyle = COLORS.RARITY_RARE; ctx.fillText("Rare: 20%", 480, 270);
-    ctx.fillStyle = COLORS.RARITY_EPIC; ctx.fillText("Epic: 10%", 560, 270);
+    if (assets['forge_bg'] && assets['forge_bg'].complete) ctx.drawImage(assets['forge_bg'], 155, 0, 650, 650);
+    ctx.textAlign = "center"; ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Arial";
+    ctx.fillText(`${player.ore} ORE AVAILABLE`, 480, 510);
     uiButtons.forEach(btn => btn.state === "forge" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 }
 
 function drawCombat() {
-    drawSprite('player', 20, 150, 350, 350, "HERO"); 
+    drawSprite('player', 20, 150, 350, 350, "HERO");
     drawSprite(`enemy_${currentLvl}`, 590, 150, 350, 350, enemy.name);
     drawHealthBar(40, 100, 300, pDisplayHp, player.maxHp, userName);
     drawHealthBar(620, 100, 300, eDisplayHp, enemy.maxHp, enemy.name);
+    
+    // Draw interaction zones
     for(let i=1; i<=5; i++) {
         const id = i.toString(), y = 150 + (i-1) * 75;
         ctx.fillStyle = selBlk.includes(id) ? COLORS.CYAN : "rgba(40, 40, 60, 0.7)";
@@ -120,7 +110,28 @@ function drawCombat() {
         ctx.fillStyle = selAtk === id ? COLORS.RED : "rgba(40, 40, 60, 0.7)";
         ctx.fillRect(580, y, 70, 70); drawSprite(`icon_${id}`, 585, y+5, 60, 60, ZONE_NAMES[id]);
     }
+
+    // Instructional Text
+    if (!isProcessing) {
+        ctx.textAlign = "center";
+        ctx.font = "bold 16px Arial";
+        
+        // Defense Instruction
+        ctx.fillStyle = (selBlk.length === 2) ? COLORS.GREEN : COLORS.CYAN;
+        ctx.fillText(`DEFENSE: ${selBlk.length}/2`, 345, 140);
+        
+        // Attack Instruction
+        ctx.fillStyle = (selAtk) ? COLORS.GREEN : COLORS.RED;
+        ctx.fillText(`ATTACK: ${selAtk ? 1 : 0}/1`, 615, 140);
+        
+        if (!selAtk || selBlk.length < 2) {
+           ctx.fillStyle = COLORS.GOLD;
+           ctx.fillText("SELECT 1 ATTACK (RED) AND 2 DEFENSE (BLUE) TO FIGHT", 480, 535);
+        }
+    }
+
     uiButtons.forEach(btn => btn.state === "combat" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
+    
     ctx.fillStyle = COLORS.LOG_BG; ctx.fillRect(20, 545, 920, 95);
     log.slice(-5).forEach((m, i) => {
         ctx.font = "14px monospace"; ctx.fillStyle = m.col; ctx.textAlign = "left";
@@ -148,9 +159,9 @@ function drawInventory() {
         drawSprite(item.name, x+10, y+10, 60, 60, item.name.substring(0,2), COLORS[`RARITY_${item.rarity}`]);
     });
     if (selectedInvItem) {
-        ctx.fillStyle = "#1a1a2e"; ctx.fillRect(600, 110, 310, 400); 
+        ctx.fillStyle = "#1a1a2e"; ctx.fillRect(600, 110, 310, 400);
         ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(600, 110, 310, 400);
-        ctx.fillStyle = COLORS.RED; ctx.fillRect(875, 115, 30, 30); 
+        ctx.fillStyle = COLORS.RED; ctx.fillRect(875, 115, 30, 30);
         ctx.fillStyle = COLORS.WHITE; ctx.textAlign = "center"; ctx.fillText("X", 890, 137);
         ctx.fillStyle = COLORS[`RARITY_${selectedInvItem.rarity}`]; ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
         ctx.fillText(selectedInvItem.name.toUpperCase(), 755, 150);

@@ -12,8 +12,11 @@ const assets = {};
 function loadAsset(key, path) { const img = new Image(); img.src = path; assets[key] = img; }
 
 loadAsset('player', 'assets/player.png');
+loadAsset('forge_bg', 'assets/crafting_window.png');
+loadAsset('ore', 'assets/ore.png');
+
 for(let i=1; i<=10; i++) loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
 Object.keys(ZONE_NAMES).forEach(id => loadAsset(`icon_${id}`, `assets/${ZONE_NAMES[id].toLowerCase()}.png`));
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
-let levelUpTimer = 0; // 0 = hidden, higher = visible and counting down
+let levelUpTimer = 0;
