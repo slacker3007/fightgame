@@ -117,8 +117,13 @@ function gameLoop() {
         ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
         shake *= 0.85;
     }
-    ctx.fillStyle = COLORS.DARK_BG;
-    ctx.fillRect(0, 0, 960, 650);
+    // Draw Background Image
+        if (assets['background'] && assets['background'].complete) {
+            ctx.drawImage(assets['background'], 0, 0, 960, 650);
+        } else {
+            ctx.fillStyle = COLORS.DARK_BG;
+            ctx.fillRect(0, 0, 960, 650);
+        }
     pDisplayHp += (player.hp - pDisplayHp) * 0.1;
     eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
     updateUIButtons();

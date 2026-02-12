@@ -20,3 +20,6 @@ Object.keys(ZONE_NAMES).forEach(id => loadAsset(`icon_${id}`, `assets/${ZONE_NAM
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
 let levelUpTimer = 0;
+
+// In state.js, add this line near your other loadAsset calls:
+loadAsset('background', 'assets/Background_001.png');
