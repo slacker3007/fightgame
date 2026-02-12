@@ -21,5 +21,6 @@ ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase()
 
 let levelUpTimer = 0;
 
-// In state.js, add this line near your other loadAsset calls:
+//BG assets
 loadAsset('background', 'assets/Background_001.png');
+loadAsset('log_bg_img', 'assets/battle_log_background.png');

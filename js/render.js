@@ -132,10 +132,31 @@ function drawCombat() {
 
     uiButtons.forEach(btn => btn.state === "combat" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
     
-    ctx.fillStyle = COLORS.LOG_BG; ctx.fillRect(20, 545, 920, 95);
-    log.slice(-5).forEach((m, i) => {
-        ctx.font = "14px monospace"; ctx.fillStyle = m.col; ctx.textAlign = "left";
-        ctx.fillText(`> ${m.txt}`, 40, 570 + i*14);
+    // --- Battle Log Rendering ---
+    if (assets['log_bg_img'] && assets['log_bg_img'].complete) {
+        // We draw the scroll centered at the bottom
+        ctx.drawImage(assets['log_bg_img'], 40, 530, 880, 120);
+    } else {
+        ctx.fillStyle = COLORS.LOG_BG; 
+        ctx.fillRect(20, 545, 920, 95);
+    }
+
+    // Reposition text to be centered inside the scroll parchment
+    log.slice(-4).forEach((m, i) => {
+        // Switched to a darker/sharper font for parchment feel
+        ctx.font = "bold 15px Georgia, serif"; 
+        ctx.fillStyle = m.col; 
+        ctx.textAlign = "center"; // Center text horizontally
+        
+        // Use a slight shadow to make text pop on the parchment
+        ctx.shadowColor = "rgba(0,0,0,0.3)";
+        ctx.shadowBlur = 2;
+        
+        // Draw centered on X=480, Y starts lower to fit in parchment
+        ctx.fillText(m.txt, 480, 575 + i * 18);
+        
+        // Reset shadow for next draws
+        ctx.shadowBlur = 0;
     });
 }
 
