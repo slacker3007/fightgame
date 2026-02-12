@@ -25,6 +25,7 @@ canvas.addEventListener('mousedown', e => {
         initPlayer();
         currentLvl = 1; 
         startLevel(1);
+        // Video is now handled by the browser/CSS, but we can still trigger play
         if (typeof bgVideo !== 'undefined') bgVideo.play();
     }
     else if (state === "inventory") {
@@ -44,16 +45,13 @@ canvas.addEventListener('mousedown', e => {
         });
     } 
     else if (state === "combat" && !isProcessing) {
-        // Updated click detection to match render.js tightened spacing
         for(let i=1; i<=5; i++) {
             const y = 140 + (i-1) * 65;
-            // Defense zones (Blue)
             if(mx > 320 && mx < 380 && my > y && my < y+60) {
                 const id = i.toString();
                 if(selBlk.includes(id)) selBlk = selBlk.filter(z => z !== id);
                 else if(selBlk.length < 2) selBlk.push(id);
             }
-            // Attack zones (Red)
             if(mx > 580 && mx < 640 && my > y && my < y+60) selAtk = i.toString();
         }
     }
@@ -93,7 +91,6 @@ function updateUIButtons() {
     }
 
     if (state === "combat" && selAtk && selBlk.length === 2 && !isProcessing) {
-        // MOVED HIGHER: Changed y from 495 to 445 to sit above the scroll
         createButton(430, 345, 100, 45, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
     }
 
@@ -119,17 +116,19 @@ window.addEventListener('keydown', e => {
 
 function gameLoop() {
     ctx.save();
+    
+    // Screen Shake Logic
     if (shake > 0) { 
         ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
         shake *= 0.85;
     }
 
-    if (typeof bgVideo !== 'undefined' && bgVideo.readyState >= 2) {
-        ctx.drawImage(bgVideo, 0, 0, 960, 650);
-    } else {
-        ctx.fillStyle = COLORS.DARK_BG;
-        ctx.fillRect(0, 0, 960, 650);
-    }
+    /**
+     * OPTIMIZATION: 
+     * We clear the canvas so it becomes transparent. 
+     * The video is now handled by the <video> element in index.html.
+     */
+    ctx.clearRect(0, 0, 960, 650);
 
     pDisplayHp += (player.hp - pDisplayHp) * 0.1;
     eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
@@ -159,4 +158,5 @@ function gameLoop() {
     ctx.restore();
     requestAnimationFrame(gameLoop);
 }
+
 gameLoop();
