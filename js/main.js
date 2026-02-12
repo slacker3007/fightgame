@@ -25,6 +25,7 @@ canvas.addEventListener('mousedown', e => {
         initPlayer();
         currentLvl = 1; 
         startLevel(1);
+        if (typeof bgVideo !== 'undefined') bgVideo.play();
     }
     else if (state === "inventory") {
         if (selectedInvItem && mx > 875 && mx < 905 && my > 115 && my < 145) { 
@@ -43,14 +44,17 @@ canvas.addEventListener('mousedown', e => {
         });
     } 
     else if (state === "combat" && !isProcessing) {
+        // Updated click detection to match render.js tightened spacing
         for(let i=1; i<=5; i++) {
-            const y = 150 + (i-1) * 75;
-            if(mx > 310 && mx < 380 && my > y && my < y+70) {
+            const y = 140 + (i-1) * 65;
+            // Defense zones (Blue)
+            if(mx > 320 && mx < 380 && my > y && my < y+60) {
                 const id = i.toString();
                 if(selBlk.includes(id)) selBlk = selBlk.filter(z => z !== id);
                 else if(selBlk.length < 2) selBlk.push(id);
             }
-            if(mx > 580 && mx < 650 && my > y && my < y+70) selAtk = i.toString();
+            // Attack zones (Red)
+            if(mx > 580 && mx < 640 && my > y && my < y+60) selAtk = i.toString();
         }
     }
 });
@@ -89,7 +93,8 @@ function updateUIButtons() {
     }
 
     if (state === "combat" && selAtk && selBlk.length === 2 && !isProcessing) {
-        createButton(430, 495, 100, 45, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
+        // MOVED HIGHER: Changed y from 495 to 445 to sit above the scroll
+        createButton(430, 345, 100, 45, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
     }
 
     if (state === "gameover" || state === "victory") {
@@ -105,6 +110,7 @@ window.addEventListener('keydown', e => {
             initPlayer();
             currentLvl = 1;
             startLevel(1);
+            if (typeof bgVideo !== 'undefined') bgVideo.play();
         }
         else if(e.key === "Backspace") userName = userName.slice(0, -1);
         else if(userName.length < 12 && e.key.length === 1) userName += e.key;
@@ -117,23 +123,27 @@ function gameLoop() {
         ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
         shake *= 0.85;
     }
-    // Draw Background Image
-        if (assets['background'] && assets['background'].complete) {
-            ctx.drawImage(assets['background'], 0, 0, 960, 650);
-        } else {
-            ctx.fillStyle = COLORS.DARK_BG;
-            ctx.fillRect(0, 0, 960, 650);
-        }
+
+    if (typeof bgVideo !== 'undefined' && bgVideo.readyState >= 2) {
+        ctx.drawImage(bgVideo, 0, 0, 960, 650);
+    } else {
+        ctx.fillStyle = COLORS.DARK_BG;
+        ctx.fillRect(0, 0, 960, 650);
+    }
+
     pDisplayHp += (player.hp - pDisplayHp) * 0.1;
     eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
     updateUIButtons();
+    
     if (state === "menu") drawMenu();
     else if (state === "camp") drawCamp();
     else if (state === "forge") drawForge();
     else if (state === "combat") drawCombat();
     else if (state === "inventory") drawInventory();
     else if (state === "gameover" || state === "victory") drawEnd();
+    
     if (["combat", "inventory", "camp", "forge"].includes(state)) drawProgressBar();
+    
     particles.forEach((p, i) => {
         ctx.globalAlpha = p.life;
         ctx.fillStyle = p.col;
@@ -144,6 +154,7 @@ function gameLoop() {
         p.life -= 0.02;
         if (p.life <= 0) particles.splice(i, 1);
     });
+    
     ctx.globalAlpha = 1.0;
     ctx.restore();
     requestAnimationFrame(gameLoop);

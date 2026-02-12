@@ -24,3 +24,10 @@ let levelUpTimer = 0;
 //BG assets
 loadAsset('background', 'assets/Background_001.png');
 loadAsset('log_bg_img', 'assets/battle_log_background.png');
+
+//BG video
+const bgVideo = document.createElement('video');
+bgVideo.src = 'assets/Background_video_001.mp4';
+bgVideo.muted = true;
+bgVideo.loop = true;
+bgVideo.play().catch(e => console.log("Video autoplay blocked until user interacts."));

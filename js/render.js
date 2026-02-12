@@ -97,65 +97,69 @@ function drawForge() {
 }
 
 function drawCombat() {
-    drawSprite('player', 20, 150, 350, 350, "HERO");
-    drawSprite(`enemy_${currentLvl}`, 590, 150, 350, 350, enemy.name);
-    drawHealthBar(40, 100, 300, pDisplayHp, player.maxHp, userName);
-    drawHealthBar(620, 100, 300, eDisplayHp, enemy.maxHp, enemy.name);
+    drawSprite('player', 20, 130, 350, 350, "HERO");
+    drawSprite(`enemy_${currentLvl}`, 590, 130, 350, 350, enemy.name);
+    drawHealthBar(40, 90, 300, pDisplayHp, player.maxHp, userName);
+    drawHealthBar(620, 90, 300, eDisplayHp, enemy.maxHp, enemy.name);
     
-    // Draw interaction zones
+    // --- Interaction Zones ---
     for(let i=1; i<=5; i++) {
-        const id = i.toString(), y = 150 + (i-1) * 75;
+        const id = i.toString(), y = 140 + (i-1) * 65; 
         ctx.fillStyle = selBlk.includes(id) ? COLORS.CYAN : "rgba(40, 40, 60, 0.7)";
-        ctx.fillRect(310, y, 70, 70); drawSprite(`icon_${id}`, 315, y+5, 60, 60, ZONE_NAMES[id]);
+        ctx.fillRect(320, y, 60, 60); 
+        drawSprite(`icon_${id}`, 325, y+5, 50, 50, ZONE_NAMES[id]);
+        
         ctx.fillStyle = selAtk === id ? COLORS.RED : "rgba(40, 40, 60, 0.7)";
-        ctx.fillRect(580, y, 70, 70); drawSprite(`icon_${id}`, 585, y+5, 60, 60, ZONE_NAMES[id]);
+        ctx.fillRect(580, y, 60, 60); 
+        drawSprite(`icon_${id}`, 585, y+5, 50, 50, ZONE_NAMES[id]);
     }
 
     // Instructional Text
     if (!isProcessing) {
         ctx.textAlign = "center";
         ctx.font = "bold 16px Arial";
-        
-        // Defense Instruction
         ctx.fillStyle = (selBlk.length === 2) ? COLORS.GREEN : COLORS.CYAN;
-        ctx.fillText(`DEFENSE: ${selBlk.length}/2`, 345, 140);
-        
-        // Attack Instruction
+        ctx.fillText(`DEFENSE: ${selBlk.length}/2`, 350, 130);
         ctx.fillStyle = (selAtk) ? COLORS.GREEN : COLORS.RED;
-        ctx.fillText(`ATTACK: ${selAtk ? 1 : 0}/1`, 615, 140);
+        ctx.fillText(`ATTACK: ${selAtk ? 1 : 0}/1`, 610, 130);
         
-        if (!selAtk || selBlk.length < 2) {
-           ctx.fillStyle = COLORS.GOLD;
-           ctx.fillText("SELECT 1 ATTACK (RED) AND 2 DEFENSE (BLUE) TO FIGHT", 480, 535);
-        }
+    if (!selAtk || selBlk.length < 2) {
+            // 1. Set the outline style
+            ctx.strokeStyle = COLORS.BLACK; // or "#000000"
+            ctx.lineWidth = 3;              // Thickness of the outline
+            ctx.lineJoin = "round";         // Smoothens the edges of the letters
+            
+            // 2. Draw the outlines first
+            ctx.strokeText("SELECT YOUR", 480, 250);
+            ctx.strokeText("TARGET AND DEFENSES", 480, 270);
+
+            // 3. Draw the gold fill on top
+            ctx.fillStyle = COLORS.GOLD;
+            ctx.fillText("SELECT YOUR", 480, 250);
+            ctx.fillText("TARGET AND DEFENSES", 480, 270);
+            }
     }
 
     uiButtons.forEach(btn => btn.state === "combat" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
     
-    // --- Battle Log Rendering ---
+    // --- Cleaned Up Battle Log ---
     if (assets['log_bg_img'] && assets['log_bg_img'].complete) {
-        // We draw the scroll centered at the bottom
-        ctx.drawImage(assets['log_bg_img'], 40, 530, 880, 120);
+        // Made slightly shorter (130 height) to prevent bottom-clutter
+        ctx.drawImage(assets['log_bg_img'], 240, 450, 480, 200);
     } else {
         ctx.fillStyle = COLORS.LOG_BG; 
-        ctx.fillRect(20, 545, 920, 95);
+        ctx.fillRect(20, 510, 920, 120);
     }
 
-    // Reposition text to be centered inside the scroll parchment
-    log.slice(-4).forEach((m, i) => {
-        // Switched to a darker/sharper font for parchment feel
-        ctx.font = "bold 15px Georgia, serif"; 
+    // Showing 5 lines instead of 6 so they don't hit the edges of the scroll
+    log.slice(-6).forEach((m, i) => {
+        ctx.font = "bold 16px Georgia, serif"; 
         ctx.fillStyle = m.col; 
-        ctx.textAlign = "center"; // Center text horizontally
-        
-        // Use a slight shadow to make text pop on the parchment
-        ctx.shadowColor = "rgba(0,0,0,0.3)";
-        ctx.shadowBlur = 2;
-        
-        // Draw centered on X=480, Y starts lower to fit in parchment
-        ctx.fillText(m.txt, 480, 575 + i * 18);
-        
-        // Reset shadow for next draws
+        ctx.textAlign = "center";
+        ctx.shadowColor = "rgba(0,0,0,0.4)";
+        ctx.shadowBlur = 3;
+        // Adjusted starting Y (545) to center the text block better on the parchment
+        ctx.fillText(m.txt, 480, 505 + i * 20);
         ctx.shadowBlur = 0;
     });
 }
