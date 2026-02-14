@@ -61,9 +61,9 @@ function updateUIButtons() {
     uiButtons = [];
     
     if (state === "camp") {
-        createButton(80, 250, 240, 180, "camp", "CHAMPION", COLORS.BTN_BLUE, () => state = "inventory");
-        createButton(360, 250, 240, 180, "camp", "FORGE", "#5a32a8", () => state = "forge");
-        createButton(640, 250, 240, 180, "camp", "BATTLE", COLORS.RED, () => {
+        createButton(80, 250, 244, 256, "camp", "CHAMPION", COLORS.BTN_BLUE, () => state = "inventory");
+        createButton(360, 250, 244, 256, "camp", "FORGE", "#5a32a8", () => state = "forge");
+        createButton(640, 250, 244, 256, "camp", "BATTLE", COLORS.RED, () => {
             currentLvl++;
             if(currentLvl > 10) currentLvl = 10;
             startLevel(currentLvl);

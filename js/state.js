@@ -32,3 +32,8 @@ const bgVideo = document.getElementById('bgVideoLayer');
 
 // Optional: If you want to ensure it plays after interaction
 bgVideo.play().catch(e => console.log("Waiting for user interaction to play video."));
+
+// Add these to state.js near your other loadAsset calls
+loadAsset('camp_battle', 'assets/camp_icon_battle.png');
+loadAsset('camp_champion', 'assets/camp_icon_champion.png');
+loadAsset('camp_craft', 'assets/camp_icon_craft.png');

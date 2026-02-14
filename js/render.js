@@ -56,7 +56,7 @@ function drawSprite(key, x, y, w, h, label, color) {
     if (assets[key] && assets[key].complete) ctx.drawImage(assets[key], x, y, w, h);
     else { 
         ctx.fillStyle = color || "#323232"; ctx.fillRect(x, y, w, h);
-        ctx.fillStyle = "white"; ctx.font = "12px Arial"; ctx.textAlign = "center"; 
+        ctx.fillStyle = "white"; ctx.font = "12px Arial"; ctx.textAlign = "center";
         ctx.fillText(label || key, x + w/2, y + h/2);
     }
 }
@@ -85,7 +85,27 @@ function drawCamp() {
     ctx.fillStyle = COLORS.CYAN;
     ctx.fillText(`Ore: ${player.ore}`, 480, 160);
     if (assets['ore'] && assets['ore'].complete) ctx.drawImage(assets['ore'], 410, 140, 25, 25);
-    uiButtons.forEach(btn => btn.state === "camp" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
+
+    // Map labels to the new icon asset keys
+    const iconMap = {
+        "CHAMPION": "camp_champion",
+        "FORGE": "camp_craft",
+        "BATTLE": "camp_battle"
+    };
+
+    uiButtons.forEach(btn => {
+        if (btn.state === "camp") {
+            const assetKey = iconMap[btn.label];
+            if (assets[assetKey] && assets[assetKey].complete) {
+                // Render custom 244x256 icons (scaled to button size)
+                ctx.drawImage(assets[assetKey], btn.x, btn.y, btn.w, btn.h);
+            } else {
+                // Fallback to original style
+                drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
+            }
+        }
+    });
+
     drawLevelUp();
 }
 
@@ -102,19 +122,17 @@ function drawCombat() {
     drawHealthBar(40, 90, 300, pDisplayHp, player.maxHp, userName);
     drawHealthBar(620, 90, 300, eDisplayHp, enemy.maxHp, enemy.name);
     
-    // --- Interaction Zones ---
     for(let i=1; i<=5; i++) {
-        const id = i.toString(), y = 140 + (i-1) * 65; 
+        const id = i.toString(), y = 140 + (i-1) * 65;
         ctx.fillStyle = selBlk.includes(id) ? COLORS.CYAN : "rgba(40, 40, 60, 0.7)";
-        ctx.fillRect(320, y, 60, 60); 
+        ctx.fillRect(320, y, 60, 60);
         drawSprite(`icon_${id}`, 325, y+5, 50, 50, ZONE_NAMES[id]);
         
         ctx.fillStyle = selAtk === id ? COLORS.RED : "rgba(40, 40, 60, 0.7)";
-        ctx.fillRect(580, y, 60, 60); 
+        ctx.fillRect(580, y, 60, 60);
         drawSprite(`icon_${id}`, 585, y+5, 50, 50, ZONE_NAMES[id]);
     }
 
-    // Instructional Text
     if (!isProcessing) {
         ctx.textAlign = "center";
         ctx.font = "bold 16px Arial";
@@ -123,42 +141,33 @@ function drawCombat() {
         ctx.fillStyle = (selAtk) ? COLORS.GREEN : COLORS.RED;
         ctx.fillText(`ATTACK: ${selAtk ? 1 : 0}/1`, 610, 130);
         
-    if (!selAtk || selBlk.length < 2) {
-            // 1. Set the outline style
-            ctx.strokeStyle = COLORS.BLACK; // or "#000000"
-            ctx.lineWidth = 3;              // Thickness of the outline
-            ctx.lineJoin = "round";         // Smoothens the edges of the letters
-            
-            // 2. Draw the outlines first
+        if (!selAtk || selBlk.length < 2) {
+            ctx.strokeStyle = COLORS.BLACK;
+            ctx.lineWidth = 3;
+            ctx.lineJoin = "round";
             ctx.strokeText("SELECT YOUR", 480, 250);
             ctx.strokeText("TARGET AND DEFENSES", 480, 270);
-
-            // 3. Draw the gold fill on top
             ctx.fillStyle = COLORS.GOLD;
             ctx.fillText("SELECT YOUR", 480, 250);
             ctx.fillText("TARGET AND DEFENSES", 480, 270);
-            }
+        }
     }
 
     uiButtons.forEach(btn => btn.state === "combat" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
     
-    // --- Cleaned Up Battle Log ---
     if (assets['log_bg_img'] && assets['log_bg_img'].complete) {
-        // Made slightly shorter (130 height) to prevent bottom-clutter
         ctx.drawImage(assets['log_bg_img'], 240, 450, 480, 200);
     } else {
-        ctx.fillStyle = COLORS.LOG_BG; 
+        ctx.fillStyle = COLORS.LOG_BG;
         ctx.fillRect(20, 510, 920, 120);
     }
 
-    // Showing 5 lines instead of 6 so they don't hit the edges of the scroll
     log.slice(-6).forEach((m, i) => {
-        ctx.font = "bold 16px Georgia, serif"; 
-        ctx.fillStyle = m.col; 
+        ctx.font = "bold 16px Georgia, serif";
+        ctx.fillStyle = m.col;
         ctx.textAlign = "center";
         ctx.shadowColor = "rgba(0,0,0,0.4)";
         ctx.shadowBlur = 3;
-        // Adjusted starting Y (545) to center the text block better on the parchment
         ctx.fillText(m.txt, 480, 505 + i * 20);
         ctx.shadowBlur = 0;
     });
@@ -203,7 +212,7 @@ function drawInventory() {
 
 function drawEnd() {
     ctx.fillStyle = "rgba(0,0,0,0.95)"; ctx.fillRect(0,0,960,650);
-    ctx.textAlign = "center"; 
+    ctx.textAlign = "center";
     const isVictory = state === "victory";
     ctx.fillStyle = isVictory ? COLORS.GOLD : COLORS.RED;
     ctx.font = "bold 60px Arial"; ctx.fillText(isVictory ? "VICTORY" : "DEFEATED", 480, 100);
