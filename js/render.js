@@ -86,7 +86,6 @@ function drawCamp() {
     ctx.fillText(`Ore: ${player.ore}`, 480, 160);
     if (assets['ore'] && assets['ore'].complete) ctx.drawImage(assets['ore'], 410, 140, 25, 25);
 
-    // Map labels to the new icon asset keys
     const iconMap = {
         "CHAMPION": "camp_champion",
         "FORGE": "camp_craft",
@@ -97,15 +96,12 @@ function drawCamp() {
         if (btn.state === "camp") {
             const assetKey = iconMap[btn.label];
             if (assets[assetKey] && assets[assetKey].complete) {
-                // Render custom 244x256 icons (scaled to button size)
                 ctx.drawImage(assets[assetKey], btn.x, btn.y, btn.w, btn.h);
             } else {
-                // Fallback to original style
                 drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
             }
         }
     });
-
     drawLevelUp();
 }
 
@@ -153,7 +149,16 @@ function drawCombat() {
         }
     }
 
-    uiButtons.forEach(btn => btn.state === "combat" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
+    uiButtons.forEach(btn => {
+        if (btn.state === "combat") {
+            // New logic to handle the graphical Fight Button
+            if (btn.label === "FIGHT!" && assets['fight_btn'] && assets['fight_btn'].complete) {
+                ctx.drawImage(assets['fight_btn'], btn.x, btn.y, btn.w, btn.h);
+            } else {
+                drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
+            }
+        }
+    });
     
     if (assets['log_bg_img'] && assets['log_bg_img'].complete) {
         ctx.drawImage(assets['log_bg_img'], 240, 450, 480, 200);
@@ -166,10 +171,7 @@ function drawCombat() {
         ctx.font = "bold 16px Georgia, serif";
         ctx.fillStyle = m.col;
         ctx.textAlign = "center";
-        ctx.shadowColor = "rgba(0,0,0,0.4)";
-        ctx.shadowBlur = 3;
         ctx.fillText(m.txt, 480, 505 + i * 20);
-        ctx.shadowBlur = 0;
     });
 }
 

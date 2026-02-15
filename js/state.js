@@ -37,3 +37,6 @@ bgVideo.play().catch(e => console.log("Waiting for user interaction to play vide
 loadAsset('camp_battle', 'assets/camp_icon_battle.png');
 loadAsset('camp_champion', 'assets/camp_icon_champion.png');
 loadAsset('camp_craft', 'assets/camp_icon_craft.png');
+
+// Add this near your other loadAsset calls in state.js
+loadAsset('fight_btn', 'assets/fight_button.png');

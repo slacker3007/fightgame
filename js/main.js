@@ -25,7 +25,6 @@ canvas.addEventListener('mousedown', e => {
         initPlayer();
         currentLvl = 1; 
         startLevel(1);
-        // Video is now handled by the browser/CSS, but we can still trigger play
         if (typeof bgVideo !== 'undefined') bgVideo.play();
     }
     else if (state === "inventory") {
@@ -91,7 +90,8 @@ function updateUIButtons() {
     }
 
     if (state === "combat" && selAtk && selBlk.length === 2 && !isProcessing) {
-        createButton(430, 345, 100, 45, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
+        // Adjusted dimensions to 160x88 to fit the 814:444 aspect ratio of the new PNG
+        createButton(400, 260, 160, 88, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
     }
 
     if (state === "gameover" || state === "victory") {
@@ -116,20 +116,11 @@ window.addEventListener('keydown', e => {
 
 function gameLoop() {
     ctx.save();
-    
-    // Screen Shake Logic
     if (shake > 0) { 
         ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
         shake *= 0.85;
     }
-
-    /**
-     * OPTIMIZATION: 
-     * We clear the canvas so it becomes transparent. 
-     * The video is now handled by the <video> element in index.html.
-     */
     ctx.clearRect(0, 0, 960, 650);
-
     pDisplayHp += (player.hp - pDisplayHp) * 0.1;
     eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
     updateUIButtons();
