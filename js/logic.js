@@ -1,16 +1,22 @@
+const INV_LIMIT = 20; 
+let inventoryError = false; 
+
 function initPlayer() {
     player = { 
-        STR: 5, DEX: 5, STA: 5, LUCK: 5, 
+        baseSTR: 5, baseDEX: 5, baseSTA: 5, baseLUCK: 5, 
         hp: 0, maxHp: 0, 
         weapon: null, armor: null, 
         inventory: [], 
         ore: 0, 
-        points: 0, bonus: {} 
+        points: 0, 
+        bonus: {STR: 0, DEX: 0, STA: 0, LUCK: 0},
+        total: {STR: 5, DEX: 5, STA: 5, LUCK: 5}
     };
     calcStats();
     player.hp = player.maxHp; 
     pDisplayHp = player.hp;
     log = [];
+    inventoryError = false;
     addLog("Welcome to the Gauntlet.", COLORS.GOLD);
 }
 
@@ -23,10 +29,15 @@ function calcStats() {
             });
         }
     });
-    player.maxHp = 100 + ((player.STA + player.bonus.STA) * 15);
-    player.dmg = 10 + ((player.STR + player.bonus.STR) * 4);
-    player.dodge = Math.min(0.60, (player.DEX + player.bonus.DEX) * 0.02);
-    player.crit = Math.min(0.50, (player.LUCK + player.bonus.LUCK) * 0.03);
+
+    ["STR", "DEX", "STA", "LUCK"].forEach(s => {
+        player.total[s] = player["base" + s] + player.bonus[s];
+    });
+
+    player.maxHp = 100 + (player.total.STA * 15);
+    player.dmg = 10 + (player.total.STR * 4);
+    player.dodge = Math.min(0.60, player.total.DEX * 0.02);
+    player.crit = Math.min(0.50, player.total.LUCK * 0.03);
 }
 
 function startLevel(lvl) {
@@ -94,6 +105,12 @@ function checkEnd() {
 }
 
 function craftItem() {
+    if (player.inventory.length >= INV_LIMIT) {
+        inventoryError = true;
+        addLog("Inventory Full!", COLORS.RED);
+        return;
+    }
+
     const COST = 10;
     if (player.ore < COST) {
         addLog(`Need ${COST} Ore!`, COLORS.RED);
@@ -101,6 +118,8 @@ function craftItem() {
         return;
     }
     player.ore -= COST;
+    inventoryError = false; 
+
     const roll = Math.random();
     let rarity = "COMMON";
     if (roll < 0.10) rarity = "EPIC";
@@ -112,6 +131,19 @@ function craftItem() {
     
     addLog(`Forged: ${newItem.name}!`, COLORS[`RARITY_${rarity}`]);
     spawnText("CRAFTED!", 480, 280, COLORS.GOLD);
+}
+
+function salvageItem(item) {
+    if (!item || item === player.weapon || item === player.armor) return;
+    
+    const refund = item.rarity === "EPIC" ? 8 : (item.rarity === "RARE" ? 5 : 3);
+    player.ore += refund;
+    player.inventory = player.inventory.filter(i => i !== item);
+    inventoryError = false; 
+    
+    addLog(`Salvaged ${item.name} for ${refund} Ore.`, COLORS.CYAN);
+    selectedInvItem = null;
+    salvageConfirm = null;
 }
 
 function addLog(txt, col) { log.push({txt, col}); if(log.length > 50) log.shift(); }
