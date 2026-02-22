@@ -6,6 +6,8 @@ function createButton(x, y, w, h, stateReq, label, color, action) {
 }
 
 canvas.addEventListener('mousedown', e => {
+    if (!isLoaded) return; // Ignore clicks while loading
+    
     const r = canvas.getBoundingClientRect();
     const mx = (e.clientX - r.left) * (960 / r.width);
     const my = (e.clientY - r.top) * (650 / r.height);
@@ -33,7 +35,6 @@ canvas.addEventListener('mousedown', e => {
             selectedInvItem = null; return;
         }
         
-        // Updated centerLine 50px left (460 -> 410)
         const centerLine = 410; 
         if (mx > centerLine && mx < centerLine + 90 && my > 140 && my < 230) selectedInvItem = player.weapon;
         if (mx > centerLine + 100 && mx < centerLine + 190 && my > 140 && my < 230) selectedInvItem = player.armor;
@@ -145,26 +146,31 @@ function gameLoop() {
         shake *= 0.85;
     }
     ctx.clearRect(0, 0, 960, 650);
-    pDisplayHp += (player.hp - pDisplayHp) * 0.1;
-    eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
-    updateUIButtons();
-    if (state === "menu") drawMenu();
-    else if (state === "camp") drawCamp();
-    else if (state === "forge") drawForge();
-    else if (state === "combat") drawCombat();
-    else if (state === "inventory") drawInventory();
-    else if (state === "gameover" || state === "victory") drawEnd();
-    if (["combat", "inventory", "camp", "forge"].includes(state)) drawProgressBar();
-    particles.forEach((p, i) => {
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.col;
-        ctx.font = "bold 28px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(p.txt, p.x, p.y);
-        p.y += p.vy;
-        p.life -= 0.02;
-        if (p.life <= 0) particles.splice(i, 1);
-    });
+
+    if (!isLoaded) {
+        drawLoadingScreen();
+    } else {
+        pDisplayHp += (player.hp - pDisplayHp) * 0.1;
+        eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
+        updateUIButtons();
+        if (state === "menu") drawMenu();
+        else if (state === "camp") drawCamp();
+        else if (state === "forge") drawForge();
+        else if (state === "combat") drawCombat();
+        else if (state === "inventory") drawInventory();
+        else if (state === "gameover" || state === "victory") drawEnd();
+        if (["combat", "inventory", "camp", "forge"].includes(state)) drawProgressBar();
+        particles.forEach((p, i) => {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.col;
+            ctx.font = "bold 28px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(p.txt, p.x, p.y);
+            p.y += p.vy;
+            p.life -= 0.02;
+            if (p.life <= 0) particles.splice(i, 1);
+        });
+    }
     ctx.globalAlpha = 1.0;
     ctx.restore();
     requestAnimationFrame(gameLoop);

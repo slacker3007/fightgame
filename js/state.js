@@ -8,35 +8,43 @@ let pDisplayHp = 0, eDisplayHp = 0, shake = 0, particles = [];
 let highScores = JSON.parse(localStorage.getItem('gauntletScores')) || [];
 let hoveredItem = null, selectedInvItem = null, tooltipPos = {x:0, y:0};
 
-const assets = {};
-function loadAsset(key, path) { const img = new Image(); img.src = path; assets[key] = img; }
+// Loading State Variables
+let assetsLoaded = 0;
+let totalAssets = 0;
+let isLoaded = false;
 
+const assets = {};
+function loadAsset(key, path) { 
+    totalAssets++;
+    const img = new Image(); 
+    img.src = path; 
+    img.onload = () => {
+        assetsLoaded++;
+        if (assetsLoaded === totalAssets) isLoaded = true;
+    };
+    img.onerror = () => {
+        console.error(`Failed: ${path}`);
+        assetsLoaded++;
+        if (assetsLoaded === totalAssets) isLoaded = true;
+    };
+    assets[key] = img; 
+}
+
+// Begin loading sequence
 loadAsset('player', 'assets/player.png');
 loadAsset('forge_bg', 'assets/crafting_window.png');
 loadAsset('ore', 'assets/ore.png');
+loadAsset('background', 'assets/Background_001.png');
+loadAsset('log_bg_img', 'assets/battle_log_background.png');
+loadAsset('camp_battle', 'assets/camp_icon_battle.png');
+loadAsset('camp_champion', 'assets/camp_icon_champion.png');
+loadAsset('camp_craft', 'assets/camp_icon_craft.png');
+loadAsset('fight_btn', 'assets/fight_button.png');
 
 for(let i=1; i<=10; i++) loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
 Object.keys(ZONE_NAMES).forEach(id => loadAsset(`icon_${id}`, `assets/${ZONE_NAMES[id].toLowerCase()}.png`));
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
 let levelUpTimer = 0;
-
-//BG assets
-loadAsset('background', 'assets/Background_001.png');
-loadAsset('log_bg_img', 'assets/battle_log_background.png');
-
-// ... (rest of state.js stays the same)
-
-// Replace the manual video creation with this:
 const bgVideo = document.getElementById('bgVideoLayer');
-
-// Optional: If you want to ensure it plays after interaction
 bgVideo.play().catch(e => console.log("Waiting for user interaction to play video."));
-
-// Add these to state.js near your other loadAsset calls
-loadAsset('camp_battle', 'assets/camp_icon_battle.png');
-loadAsset('camp_champion', 'assets/camp_icon_champion.png');
-loadAsset('camp_craft', 'assets/camp_icon_craft.png');
-
-// Add this near your other loadAsset calls in state.js
-loadAsset('fight_btn', 'assets/fight_button.png');

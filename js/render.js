@@ -1,3 +1,31 @@
+function drawLoadingScreen() {
+    ctx.fillStyle = COLORS.DARK_BG;
+    ctx.fillRect(0, 0, 960, 650);
+
+    const barWidth = 400;
+    const progress = assetsLoaded / totalAssets;
+    const currentWidth = (barWidth - 10) * progress;
+
+    // Outer Bar
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(480 - barWidth/2, 325, barWidth, 30);
+
+    // Inner Progress
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.fillRect(485 - barWidth/2, 330, currentWidth, 20);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.font = "bold 24px Arial";
+    ctx.fillText("FORGING ARENA ASSETS...", 480, 300);
+    
+    ctx.font = "12px monospace";
+    ctx.fillStyle = COLORS.GRAY;
+    ctx.fillText(`${assetsLoaded} / ${totalAssets} LOADED`, 480, 375);
+}
+
+// ... Keep all your existing draw functions (drawMenu, drawCamp, etc.) below this ...
 function drawStyledBtn(x, y, w, h, txt, baseCol) {
     ctx.fillStyle = COLORS.GOLD; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
     ctx.fillStyle = baseCol; ctx.fillRect(x, y, w, h);
@@ -153,7 +181,6 @@ function drawInventory() {
     ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(30, 80, 900, 520);
     drawSprite('player', 40, 120, 400, 400, "CHAMPION");
     
-    // Moved centerLine 50px left (460 -> 410)
     const centerLine = 410; 
     
     ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 18px Arial"; ctx.textAlign = "left";
@@ -197,7 +224,6 @@ function drawInventory() {
 }
 
 function renderItemDetails() {
-    // Keep details panel anchored to right side so it doesn't overlap moved stats
     ctx.fillStyle = "#1a1a2e"; ctx.fillRect(600, 110, 310, 400);
     ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(600, 110, 310, 400);
     if (salvageConfirm) {
