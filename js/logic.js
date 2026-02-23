@@ -127,10 +127,23 @@ function craftItem() {
     
     const possible = ALL_ITEMS.filter(i => i.rarity === rarity);
     const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random()*possible.length)]));
-    player.inventory.push(newItem);
+    craftedItem = newItem;
+}
+
+function resolveCrafting(keep) {
+    if (!craftedItem) return;
     
-    addLog(`Forged: ${newItem.name}!`, COLORS[`RARITY_${rarity}`]);
-    spawnText("CRAFTED!", 480, 280, COLORS.GOLD);
+    if (keep) {
+        player.inventory.push(craftedItem);
+        addLog(`Forged: ${craftedItem.name}!`, COLORS[`RARITY_${craftedItem.rarity}`]);
+        spawnText("CRAFTED!", 480, 280, COLORS.GOLD);
+    } else {
+        const refund = craftedItem.rarity === "EPIC" ? 8 : (craftedItem.rarity === "RARE" ? 5 : 3);
+        player.ore += refund;
+        addLog(`Salvaged ${craftedItem.name} for ${refund} Ore.`, COLORS.CYAN);
+        spawnText("SALVAGED", 480, 280, COLORS.CYAN);
+    }
+    craftedItem = null;
 }
 
 function salvageItem(item) {

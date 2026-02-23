@@ -23,53 +23,65 @@ canvas.addEventListener('mousedown', e => {
     }
 
     if (state === "menu" && userName.length > 0) { 
-        initPlayer();
-        currentLvl = 1; 
-        startLevel(1);
-        if (typeof bgVideo !== 'undefined') bgVideo.play();
+        startGame();
     }
     else if (state === "inventory") {
-        if (salvageConfirm) return;
-
-        if (selectedInvItem && mx > 875 && mx < 905 && my > 115 && my < 145) { 
-            selectedInvItem = null; return;
-        }
-        
-        const centerLine = 410; 
-        if (mx > centerLine && mx < centerLine + 90 && my > 140 && my < 230) selectedInvItem = player.weapon;
-        if (mx > centerLine + 100 && mx < centerLine + 190 && my > 140 && my < 230) selectedInvItem = player.armor;
-
-        const gridX = 660;
-        player.inventory.forEach((item, i) => {
-            const x = gridX + 10 + (i % 4) * 62; 
-            const y = 145 + Math.floor(i / 4) * 62;
-            if (mx > x && mx < x + 55 && my > y && my < y + 55) {
-                selectedInvItem = item;
-                salvageConfirm = null;
-            }
-        });
-        
-        ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
-            const buttonY = 315 + i * 40 - 20; 
-            if(player.points > 0 && player["base" + s] < 20 && mx > centerLine + 220 && mx < centerLine + 246 && my > buttonY && my < buttonY + 26) {
-                player["base" + s]++;
-                player.points--;
-                calcStats();
-            }
-        });
+        handleInventoryClick(mx, my);
     } 
     else if (state === "combat" && !isProcessing) {
-        for(let i=1; i<=5; i++) {
-            const y = 140 + (i-1) * 65;
-            if(mx > 320 && mx < 380 && my > y && my < y+60) {
-                const id = i.toString();
-                if(selBlk.includes(id)) selBlk = selBlk.filter(z => z !== id);
-                else if(selBlk.length < 2) selBlk.push(id);
-            }
-            if(mx > 580 && mx < 640 && my > y && my < y+60) selAtk = i.toString();
-        }
+        handleCombatClick(mx, my);
     }
 });
+
+function startGame() {
+    initPlayer();
+    currentLvl = 1; 
+    startLevel(1);
+    if (typeof bgVideo !== 'undefined') bgVideo.play();
+}
+
+function handleInventoryClick(mx, my) {
+    if (salvageConfirm) return;
+
+    if (selectedInvItem && mx > 875 && mx < 905 && my > 115 && my < 145) { 
+        selectedInvItem = null; return;
+    }
+    
+    const centerLine = 410; 
+    if (mx > centerLine && mx < centerLine + 90 && my > 140 && my < 230) selectedInvItem = player.weapon;
+    if (mx > centerLine + 100 && mx < centerLine + 190 && my > 140 && my < 230) selectedInvItem = player.armor;
+
+    const gridX = 660;
+    player.inventory.forEach((item, i) => {
+        const x = gridX + 10 + (i % 4) * 62; 
+        const y = 145 + Math.floor(i / 4) * 62;
+        if (mx > x && mx < x + 55 && my > y && my < y + 55) {
+            selectedInvItem = item;
+            salvageConfirm = null;
+        }
+    });
+    
+    ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
+        const buttonY = 315 + i * 40 - 20; 
+        if(player.points > 0 && player["base" + s] < 20 && mx > centerLine + 220 && mx < centerLine + 246 && my > buttonY && my < buttonY + 26) {
+            player["base" + s]++;
+            player.points--;
+            calcStats();
+        }
+    });
+}
+
+function handleCombatClick(mx, my) {
+    for(let i=1; i<=5; i++) {
+        const y = 140 + (i-1) * 65;
+        if(mx > 320 && mx < 380 && my > y && my < y+60) {
+            const id = i.toString();
+            if(selBlk.includes(id)) selBlk = selBlk.filter(z => z !== id);
+            else if(selBlk.length < 2) selBlk.push(id);
+        }
+        if(mx > 580 && mx < 640 && my > y && my < y+60) selAtk = i.toString();
+    }
+}
 
 function updateUIButtons() {
     uiButtons = [];
@@ -83,8 +95,13 @@ function updateUIButtons() {
         });
     }
     if (state === "forge") {
-        createButton(380, 540, 200, 60, "forge", "TRANSMUTE (10)", "#cc8400", () => craftItem());
-        createButton(20, 590, 120, 40, "forge", "BACK", COLORS.GRAY, () => state = "camp");
+        if (craftedItem) {
+            createButton(300, 500, 160, 50, "forge", "KEEP", COLORS.GREEN, () => resolveCrafting(true));
+            createButton(500, 500, 160, 50, "forge", "SALVAGE", COLORS.RED, () => resolveCrafting(false));
+        } else {
+            createButton(380, 540, 200, 60, "forge", "TRANSMUTE (10)", "#cc8400", () => craftItem());
+            createButton(20, 590, 120, 40, "forge", "BACK", COLORS.GRAY, () => state = "camp");
+        }
     }
     if (state === "inventory") {
         createButton(405, 540, 150, 40, "inventory", "BACK TO CAMP", COLORS.GRAY, () => { 

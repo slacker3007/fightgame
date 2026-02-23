@@ -129,16 +129,36 @@ function drawCamp() {
 
 function drawForge() {
     if (assets['forge_bg'] && assets['forge_bg'].complete) ctx.drawImage(assets['forge_bg'], 155, 0, 650, 650);
-    ctx.textAlign = "center"; ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Arial";
-    ctx.fillText(`${player.ore} ORE AVAILABLE`, 480, 510);
     
-    if (inventoryError) {
-        ctx.fillStyle = "rgba(255, 0, 0, 0.2)"; ctx.fillRect(330, 530, 300, 80);
-        ctx.fillStyle = COLORS.RED; ctx.font = "bold 22px Arial"; ctx.fillText("INVENTORY FULL!", 480, 565);
-        ctx.font = "14px Arial"; ctx.fillText("(Click anywhere to dismiss)", 480, 585);
+    if (craftedItem) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(0, 0, 960, 650);
+        ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 36px Arial";
+        ctx.fillText("ITEM FORGED!", 480, 150);
+        
+        drawSlot(420, 200, "", craftedItem, 120);
+        
+        ctx.fillStyle = COLORS[`RARITY_${craftedItem.rarity}`]; ctx.font = "bold 24px Arial";
+        ctx.fillText(craftedItem.name, 480, 360);
+        
+        let sy = 400; ctx.font = "18px Arial"; ctx.fillStyle = COLORS.WHITE;
+        ["STR", "DEX", "STA", "LUCK"].forEach(s => {
+            if(craftedItem[s]) {
+                ctx.fillText(`${s}: +${craftedItem[s]}`, 480, sy);
+                sy += 25;
+            }
+        });
     } else {
-        uiButtons.forEach(btn => btn.state === "forge" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
+        ctx.textAlign = "center"; ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Arial";
+        ctx.fillText(`${player.ore} ORE AVAILABLE`, 480, 510);
+        
+        if (inventoryError) {
+            ctx.fillStyle = "rgba(255, 0, 0, 0.2)"; ctx.fillRect(330, 530, 300, 80);
+            ctx.fillStyle = COLORS.RED; ctx.font = "bold 22px Arial"; ctx.fillText("INVENTORY FULL!", 480, 565);
+            ctx.font = "14px Arial"; ctx.fillText("(Click anywhere to dismiss)", 480, 585);
+        }
     }
+    
+    uiButtons.forEach(btn => btn.state === "forge" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 }
 
 function drawCombat() {

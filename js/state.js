@@ -7,6 +7,7 @@ let selAtk = null, selBlk = [], isProcessing = false;
 let pDisplayHp = 0, eDisplayHp = 0, shake = 0, particles = [];
 let highScores = JSON.parse(localStorage.getItem('gauntletScores')) || [];
 let hoveredItem = null, selectedInvItem = null, tooltipPos = {x:0, y:0};
+let craftedItem = null;
 
 // Loading State Variables
 let assetsLoaded = 0;
