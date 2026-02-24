@@ -127,7 +127,8 @@ function craftItem() {
     
     const possible = ALL_ITEMS.filter(i => i.rarity === rarity);
     const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random()*possible.length)]));
-    craftedItem = newItem;
+    pendingCraftedItem = newItem;
+    craftingAnimTimer = 60; // 1 second animation
 }
 
 function resolveCrafting(keep) {

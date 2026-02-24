@@ -95,7 +95,9 @@ function updateUIButtons() {
         });
     }
     if (state === "forge") {
-        if (craftedItem) {
+        if (craftingAnimTimer > 0) {
+            // No buttons during animation
+        } else if (craftedItem) {
             createButton(300, 500, 160, 50, "forge", "KEEP", COLORS.GREEN, () => resolveCrafting(true));
             createButton(500, 500, 160, 50, "forge", "SALVAGE", COLORS.RED, () => resolveCrafting(false));
         } else {
@@ -146,10 +148,7 @@ function updateUIButtons() {
 window.addEventListener('keydown', e => {
     if(state === "menu") {
         if(e.key === "Enter" && userName.length > 0) { 
-            initPlayer();
-            currentLvl = 1;
-            startLevel(1);
-            if (typeof bgVideo !== 'undefined') bgVideo.play();
+            startGame();
         }
         else if(e.key === "Backspace") userName = userName.slice(0, -1);
         else if(userName.length < 12 && e.key.length === 1) userName += e.key;
@@ -167,9 +166,61 @@ function gameLoop() {
     if (!isLoaded) {
         drawLoadingScreen();
     } else {
+        if (craftingAnimTimer > 0) {
+            craftingAnimTimer--;
+            shake = 3; 
+            
+            // Implosion Effect: Gather energy
+            for(let i=0; i<3; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 120 + Math.random() * 50;
+                fxParticles.push({
+                    x: 480 + Math.cos(angle) * dist,
+                    y: 300 + Math.sin(angle) * dist,
+                    vx: -Math.cos(angle) * 12, // Fast inward
+                    vy: -Math.sin(angle) * 12,
+                    life: 0.5,
+                    color: Math.random() > 0.5 ? COLORS.GOLD : COLORS.WHITE,
+                    size: Math.random() * 3 + 1
+                });
+            }
+
+            if (craftingAnimTimer === 0) {
+                craftedItem = pendingCraftedItem;
+                
+                // Explosion Effect: Reveal
+                const rColor = COLORS[`RARITY_${craftedItem.rarity}`];
+                for(let i=0; i<80; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 15 + 2;
+                    fxParticles.push({
+                        x: 480, y: 300,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 1.0 + Math.random(),
+                        color: rColor,
+                        size: Math.random() * 5 + 2
+                    });
+                }
+                
+                pendingCraftedItem = null;
+                shake = 20; 
+            }
+        }
+
+        // Update FX Particles
+        for (let i = fxParticles.length - 1; i >= 0; i--) {
+            let p = fxParticles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.02;
+            if (p.life <= 0) fxParticles.splice(i, 1);
+        }
+
         pDisplayHp += (player.hp - pDisplayHp) * 0.1;
         eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
         updateUIButtons();
+
         if (state === "menu") drawMenu();
         else if (state === "camp") drawCamp();
         else if (state === "forge") drawForge();
@@ -177,6 +228,7 @@ function gameLoop() {
         else if (state === "inventory") drawInventory();
         else if (state === "gameover" || state === "victory") drawEnd();
         if (["combat", "inventory", "camp", "forge"].includes(state)) drawProgressBar();
+        drawFxParticles();
         particles.forEach((p, i) => {
             ctx.globalAlpha = p.life;
             ctx.fillStyle = p.col;

@@ -4,10 +4,12 @@ const ctx = canvas.getContext('2d');
 let state = "menu", userName = "", score = 0, currentLvl = 1;
 let player = {}, enemy = {}, log = [];
 let selAtk = null, selBlk = [], isProcessing = false;
-let pDisplayHp = 0, eDisplayHp = 0, shake = 0, particles = [];
+let pDisplayHp = 0, eDisplayHp = 0, shake = 0, particles = [], fxParticles = [];
 let highScores = JSON.parse(localStorage.getItem('gauntletScores')) || [];
 let hoveredItem = null, selectedInvItem = null, tooltipPos = {x:0, y:0};
 let craftedItem = null;
+let craftingAnimTimer = 0;
+let pendingCraftedItem = null;
 
 // Loading State Variables
 let assetsLoaded = 0;

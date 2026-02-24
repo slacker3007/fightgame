@@ -25,6 +25,18 @@ function drawLoadingScreen() {
     ctx.fillText(`${assetsLoaded} / ${totalAssets} LOADED`, 480, 375);
 }
 
+function drawFxParticles() {
+    fxParticles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+}
+
 // ... Keep all your existing draw functions (drawMenu, drawCamp, etc.) below this ...
 function drawStyledBtn(x, y, w, h, txt, baseCol) {
     ctx.fillStyle = COLORS.GOLD; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
@@ -130,7 +142,12 @@ function drawCamp() {
 function drawForge() {
     if (assets['forge_bg'] && assets['forge_bg'].complete) ctx.drawImage(assets['forge_bg'], 155, 0, 650, 650);
     
-    if (craftedItem) {
+    if (craftingAnimTimer > 0) {
+        ctx.textAlign = "center";
+        ctx.font = "bold 36px Arial";
+        ctx.fillStyle = COLORS.WHITE;
+        ctx.fillText("Forging...", 480, 320);
+    } else if (craftedItem) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(0, 0, 960, 650);
         ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 36px Arial";
         ctx.fillText("ITEM FORGED!", 480, 150);
