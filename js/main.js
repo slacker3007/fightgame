@@ -7,27 +7,27 @@ function createButton(x, y, w, h, stateReq, label, color, action) {
 
 canvas.addEventListener('mousedown', e => {
     if (!isLoaded) return; // Ignore clicks while loading
-    
+
     const r = canvas.getBoundingClientRect();
     const mx = (e.clientX - r.left) * (960 / r.width);
     const my = (e.clientY - r.top) * (650 / r.height);
 
     if (inventoryError) inventoryError = false;
 
-    const clickedBtn = uiButtons.find(b => 
+    const clickedBtn = uiButtons.find(b =>
         state === b.state && mx > b.x && mx < b.x + b.w && my > b.y && my < b.y + b.h
     );
-    if (clickedBtn) { 
-        clickedBtn.action(); 
-        return; 
+    if (clickedBtn) {
+        clickedBtn.action();
+        return;
     }
 
-    if (state === "menu" && userName.length > 0) { 
+    if (state === "menu" && userName.length > 0) {
         startGame();
     }
     else if (state === "inventory") {
         handleInventoryClick(mx, my);
-    } 
+    }
     else if (state === "combat" && !isProcessing) {
         handleCombatClick(mx, my);
     }
@@ -35,7 +35,7 @@ canvas.addEventListener('mousedown', e => {
 
 function startGame() {
     initPlayer();
-    currentLvl = 1; 
+    currentLvl = 1;
     startLevel(1);
     if (typeof bgVideo !== 'undefined') bgVideo.play();
 }
@@ -43,27 +43,27 @@ function startGame() {
 function handleInventoryClick(mx, my) {
     if (salvageConfirm) return;
 
-    if (selectedInvItem && mx > 875 && mx < 905 && my > 115 && my < 145) { 
+    if (selectedInvItem && mx > 875 && mx < 905 && my > 115 && my < 145) {
         selectedInvItem = null; return;
     }
-    
-    const centerLine = 410; 
+
+    const centerLine = 410;
     if (mx > centerLine && mx < centerLine + 90 && my > 140 && my < 230) selectedInvItem = player.weapon;
     if (mx > centerLine + 100 && mx < centerLine + 190 && my > 140 && my < 230) selectedInvItem = player.armor;
 
     const gridX = 660;
     player.inventory.forEach((item, i) => {
-        const x = gridX + 10 + (i % 4) * 62; 
+        const x = gridX + 10 + (i % 4) * 62;
         const y = 145 + Math.floor(i / 4) * 62;
         if (mx > x && mx < x + 55 && my > y && my < y + 55) {
             selectedInvItem = item;
             salvageConfirm = null;
         }
     });
-    
+
     ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
-        const buttonY = 315 + i * 40 - 20; 
-        if(player.points > 0 && player["base" + s] < 20 && mx > centerLine + 220 && mx < centerLine + 246 && my > buttonY && my < buttonY + 26) {
+        const buttonY = 315 + i * 40 - 20;
+        if (player.points > 0 && player["base" + s] < 20 && mx > centerLine + 220 && mx < centerLine + 246 && my > buttonY && my < buttonY + 26) {
             player["base" + s]++;
             player.points--;
             calcStats();
@@ -72,25 +72,25 @@ function handleInventoryClick(mx, my) {
 }
 
 function handleCombatClick(mx, my) {
-    for(let i=1; i<=5; i++) {
-        const y = 140 + (i-1) * 65;
-        if(mx > 320 && mx < 380 && my > y && my < y+60) {
+    for (let i = 1; i <= 5; i++) {
+        const y = 140 + (i - 1) * 65;
+        if (mx > 320 && mx < 380 && my > y && my < y + 60) {
             const id = i.toString();
-            if(selBlk.includes(id)) selBlk = selBlk.filter(z => z !== id);
-            else if(selBlk.length < 2) selBlk.push(id);
+            if (selBlk.includes(id)) selBlk = selBlk.filter(z => z !== id);
+            else if (selBlk.length < 2) selBlk.push(id);
         }
-        if(mx > 580 && mx < 640 && my > y && my < y+60) selAtk = i.toString();
+        if (mx > 580 && mx < 640 && my > y && my < y + 60) selAtk = i.toString();
     }
 }
 
 function updateUIButtons() {
     uiButtons = [];
     if (state === "camp") {
-        createButton(80, 250, 244, 256, "camp", "CHAMPION", COLORS.BTN_BLUE, () => state = "inventory");
-        createButton(360, 250, 244, 256, "camp", "FORGE", "#5a32a8", () => state = "forge");
+        createButton(80, 250, 244, 256, "camp", "CHAMPION", COLORS.BTN_BLUE, () => changeState("inventory"));
+        createButton(360, 250, 244, 256, "camp", "FORGE", "#5a32a8", () => changeState("forge"));
         createButton(640, 250, 244, 256, "camp", "BATTLE", COLORS.RED, () => {
             currentLvl++;
-            if(currentLvl > 10) currentLvl = 10;
+            if (currentLvl > 10) currentLvl = 10;
             startLevel(currentLvl);
         });
     }
@@ -102,19 +102,19 @@ function updateUIButtons() {
             createButton(500, 500, 160, 50, "forge", "SALVAGE", COLORS.RED, () => resolveCrafting(false));
         } else {
             createButton(380, 540, 200, 60, "forge", "TRANSMUTE (10)", "#cc8400", () => craftItem());
-            createButton(20, 590, 120, 40, "forge", "BACK", COLORS.GRAY, () => state = "camp");
+            createButton(20, 590, 120, 40, "forge", "BACK", COLORS.GRAY, () => changeState("camp"));
         }
     }
     if (state === "inventory") {
-        createButton(405, 540, 150, 40, "inventory", "BACK TO CAMP", COLORS.GRAY, () => { 
-            state = "camp";
+        createButton(405, 540, 150, 40, "inventory", "BACK TO CAMP", COLORS.GRAY, () => {
+            changeState("camp");
             selectedInvItem = null;
             salvageConfirm = null;
         });
 
         if (selectedInvItem) {
             const isEq = (player.weapon === selectedInvItem || player.armor === selectedInvItem);
-            
+
             if (salvageConfirm) {
                 createButton(650, 300, 100, 40, "inventory", "YES", COLORS.RED, () => salvageItem(selectedInvItem));
                 createButton(770, 300, 100, 40, "inventory", "NO", COLORS.GRAY, () => salvageConfirm = null);
@@ -137,28 +137,42 @@ function updateUIButtons() {
     }
     if (state === "combat" && selAtk && selBlk.length === 2 && !isProcessing) {
         createButton(400, 260, 160, 88, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
+
+        if (player.fury >= player.maxFury) {
+            createButton(400, 360, 160, 40, "combat", "GOD STRIKE", COLORS.GOLD, () => {
+                player.isGodStrike = true;
+                resolveTurn();
+            });
+        }
     }
     if (state === "gameover" || state === "victory") {
-        createButton(380, 480, 200, 60, state, "NEW JOURNEY", COLORS.BTN_BLUE, () => { 
-            state = "menu"; userName = ""; score = 0; currentLvl = 1;
+        createButton(380, 480, 200, 60, state, "NEW JOURNEY", COLORS.BTN_BLUE, () => {
+            changeState("menu"); userName = ""; score = 0; currentLvl = 1;
         });
     }
 }
 
 window.addEventListener('keydown', e => {
-    if(state === "menu") {
-        if(e.key === "Enter" && userName.length > 0) { 
+    if (state === "menu") {
+        if (e.key === "Enter" && userName.length > 0) {
             startGame();
         }
-        else if(e.key === "Backspace") userName = userName.slice(0, -1);
-        else if(userName.length < 12 && e.key.length === 1) userName += e.key;
+        else if (e.key === "Backspace") userName = userName.slice(0, -1);
+        else if (userName.length < 12 && e.key.length === 1) userName += e.key;
     }
 });
 
+function changeState(s) {
+    if (state === s) return;
+    isTransitioning = true;
+    nextState = s;
+    transitionAlpha = 0;
+}
+
 function gameLoop() {
     ctx.save();
-    if (shake > 0) { 
-        ctx.translate(Math.random()*shake - shake/2, Math.random()*shake - shake/2);
+    if (shake > 0) {
+        ctx.translate(Math.random() * shake - shake / 2, Math.random() * shake - shake / 2);
         shake *= 0.85;
     }
     ctx.clearRect(0, 0, 960, 650);
@@ -166,31 +180,38 @@ function gameLoop() {
     if (!isLoaded) {
         drawLoadingScreen();
     } else {
+        if (isTransitioning) {
+            transitionAlpha += 0.05;
+            if (transitionAlpha >= 1) {
+                state = nextState;
+                isTransitioning = false;
+                transitionAlpha = 1; // Start fading back out
+            }
+        } else if (transitionAlpha > 0) {
+            transitionAlpha -= 0.05;
+        }
+
         if (craftingAnimTimer > 0) {
+            // ... (keep crafting logic)
             craftingAnimTimer--;
-            shake = 3; 
-            
-            // Implosion Effect: Gather energy
-            for(let i=0; i<3; i++) {
+            shake = 3;
+            for (let i = 0; i < 3; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const dist = 120 + Math.random() * 50;
                 fxParticles.push({
                     x: 480 + Math.cos(angle) * dist,
                     y: 300 + Math.sin(angle) * dist,
-                    vx: -Math.cos(angle) * 12, // Fast inward
+                    vx: -Math.cos(angle) * 12,
                     vy: -Math.sin(angle) * 12,
                     life: 0.5,
                     color: Math.random() > 0.5 ? COLORS.GOLD : COLORS.WHITE,
                     size: Math.random() * 3 + 1
                 });
             }
-
             if (craftingAnimTimer === 0) {
                 craftedItem = pendingCraftedItem;
-                
-                // Explosion Effect: Reveal
                 const rColor = COLORS[`RARITY_${craftedItem.rarity}`];
-                for(let i=0; i<80; i++) {
+                for (let i = 0; i < 80; i++) {
                     const angle = Math.random() * Math.PI * 2;
                     const speed = Math.random() * 15 + 2;
                     fxParticles.push({
@@ -202,9 +223,8 @@ function gameLoop() {
                         size: Math.random() * 5 + 2
                     });
                 }
-                
                 pendingCraftedItem = null;
-                shake = 20; 
+                shake = 20;
             }
         }
 
@@ -227,8 +247,10 @@ function gameLoop() {
         else if (state === "combat") drawCombat();
         else if (state === "inventory") drawInventory();
         else if (state === "gameover" || state === "victory") drawEnd();
+
         if (["combat", "inventory", "camp", "forge"].includes(state)) drawProgressBar();
         drawFxParticles();
+
         particles.forEach((p, i) => {
             ctx.globalAlpha = p.life;
             ctx.fillStyle = p.col;
@@ -239,8 +261,15 @@ function gameLoop() {
             p.life -= 0.02;
             if (p.life <= 0) particles.splice(i, 1);
         });
+
+        // Draw Transition Overlay
+        if (transitionAlpha > 0) {
+            ctx.globalAlpha = transitionAlpha;
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, 960, 650);
+            ctx.globalAlpha = 1.0;
+        }
     }
-    ctx.globalAlpha = 1.0;
     ctx.restore();
     requestAnimationFrame(gameLoop);
 }

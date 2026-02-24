@@ -1,19 +1,20 @@
-const INV_LIMIT = 20; 
-let inventoryError = false; 
+const INV_LIMIT = 20;
+let inventoryError = false;
 
 function initPlayer() {
-    player = { 
-        baseSTR: 5, baseDEX: 5, baseSTA: 5, baseLUCK: 5, 
-        hp: 0, maxHp: 0, 
-        weapon: null, armor: null, 
-        inventory: [], 
-        ore: 0, 
-        points: 0, 
-        bonus: {STR: 0, DEX: 0, STA: 0, LUCK: 0},
-        total: {STR: 5, DEX: 5, STA: 5, LUCK: 5}
+    player = {
+        baseSTR: 5, baseDEX: 5, baseSTA: 5, baseLUCK: 5,
+        hp: 0, maxHp: 0,
+        fury: 0, maxFury: 100, isGodStrike: false,
+        weapon: null, armor: null,
+        inventory: [],
+        ore: 0,
+        points: 0,
+        bonus: { STR: 0, DEX: 0, STA: 0, LUCK: 0 },
+        total: { STR: 5, DEX: 5, STA: 5, LUCK: 5 }
     };
     calcStats();
-    player.hp = player.maxHp; 
+    player.hp = player.maxHp;
     pDisplayHp = player.hp;
     log = [];
     inventoryError = false;
@@ -21,11 +22,11 @@ function initPlayer() {
 }
 
 function calcStats() {
-    player.bonus = {STR: 0, DEX: 0, STA: 0, LUCK: 0};
+    player.bonus = { STR: 0, DEX: 0, STA: 0, LUCK: 0 };
     [player.weapon, player.armor].forEach(item => {
-        if(item) {
+        if (item) {
             ["STR", "DEX", "STA", "LUCK"].forEach(s => {
-                if(item[s]) player.bonus[s] += item[s];
+                if (item[s]) player.bonus[s] += item[s];
             });
         }
     });
@@ -41,66 +42,115 @@ function calcStats() {
 }
 
 function startLevel(lvl) {
-    const d = ENEMY_DATA[lvl-1];
-    enemy = { name: d[0], hp: d[1], maxHp: d[1], dmg: d[2], dodge: d[3] };
+    const d = ENEMY_DATA[lvl - 1];
+    enemy = {
+        name: d[0],
+        hp: d[1],
+        maxHp: d[1],
+        dmg: d[2],
+        dodge: d[3],
+        archetype: d[4] || "balanced",
+        nextAtk: null
+    };
     eDisplayHp = enemy.hp;
-    state = "combat";
+    prepareNextEnemyMove();
+    changeState("combat");
     addLog(`Encountered ${enemy.name}!`, COLORS.RED);
+}
+
+function prepareNextEnemyMove() {
+    const r = Math.random();
+    if (enemy.archetype === "heavy") {
+        enemy.nextAtk = r < 0.7 ? ["1", "2", "3"][Math.floor(Math.random() * 3)] : ["4", "5"][Math.floor(Math.random() * 2)];
+    } else if (enemy.archetype === "agile") {
+        enemy.nextAtk = r < 0.7 ? ["3", "4", "5"][Math.floor(Math.random() * 3)] : ["1", "2"][Math.floor(Math.random() * 2)];
+    } else {
+        enemy.nextAtk = Math.floor(Math.random() * 5 + 1).toString();
+    }
 }
 
 async function resolveTurn() {
     if (isProcessing) return;
     isProcessing = true;
-    let eBlkArr = ["1","2","3","4","5"].sort(()=>.5-Math.random()).slice(0,2);
-    
-    if(eBlkArr.includes(selAtk)) {
+
+    // Enemy Defense Logic
+    let eBlkArr = [];
+    const rDef = Math.random();
+    if (enemy.archetype === "heavy") {
+        eBlkArr = (rDef < 0.6) ? ["1", "2"] : ["1", "2", "3", "4", "5"].sort(() => .5 - Math.random()).slice(0, 2);
+    } else if (enemy.archetype === "agile") {
+        eBlkArr = (rDef < 0.6) ? ["4", "5"] : ["1", "2", "3", "4", "5"].sort(() => .5 - Math.random()).slice(0, 2);
+    } else {
+        eBlkArr = ["1", "2", "3", "4", "5"].sort(() => .5 - Math.random()).slice(0, 2);
+    }
+
+    // Player Attack Phase
+    let isHit = !eBlkArr.includes(selAtk);
+    let useGodStrike = player.isGodStrike;
+
+    if (useGodStrike) {
+        isHit = true; // God Strike ignores block
+        player.isGodStrike = false;
+        player.fury = 0;
+        addLog(`GOD STRIKE UNLEASHED!`, COLORS.GOLD);
+        spawnText("GOD STRIKE", 750, 400, COLORS.GOLD);
+    }
+
+    if (!isHit) {
         addLog(`Enemy BLOCKED!`, COLORS.YELLOW);
         spawnText("BLOCKED", 750, 300, COLORS.YELLOW);
-        shake = 4; 
+        shake = 4;
     } else {
-        let crit = Math.random() < player.crit;
+        let crit = (Math.random() < player.crit) || useGodStrike;
         let d = Math.floor(player.dmg * (crit ? 2 : 1) * (selAtk === "1" ? 1.4 : 1));
-        enemy.hp -= d; 
-        shake = crit ? 20 : 10; 
+        enemy.hp -= d;
+        shake = crit ? 20 : 10;
         addLog(`You hit for ${d}!`, COLORS.RED);
         spawnText(d + (crit ? "!!" : ""), 750, 250, COLORS.RED);
+
+        if (!useGodStrike) player.fury = Math.min(player.maxFury, player.fury + 15);
     }
 
     await new Promise(r => setTimeout(r, 600));
 
-    if(enemy.hp > 0) {
-        let eAtk = Math.floor(Math.random()*5+1).toString();
-        if(selBlk.includes(eAtk)) {
+    if (enemy.hp > 0) {
+        let eAtk = enemy.nextAtk;
+        if (selBlk.includes(eAtk)) {
             addLog(`Blocked enemy ${ZONE_NAMES[eAtk]} attack!`, COLORS.CYAN);
             spawnText("BLOCK", 180, 300, COLORS.CYAN);
-            shake = 2; 
+            shake = 2;
+            player.fury = Math.min(player.maxFury, player.fury + 10);
         } else {
-            player.hp -= enemy.dmg; 
-            shake = 12; 
+            player.hp -= enemy.dmg;
+            shake = 12;
             addLog(`Enemy hit your ${ZONE_NAMES[eAtk]}!`, COLORS.RED);
             spawnText("-" + enemy.dmg, 180, 250, COLORS.RED);
+            player.fury = Math.min(player.maxFury, player.fury + 20);
         }
     }
-    selAtk = null; selBlk = []; isProcessing = false;
+    selAtk = null;
+    selBlk = [];
+    isProcessing = false;
+    prepareNextEnemyMove();
     checkEnd();
 }
 
 function checkEnd() {
-    if(enemy.hp <= 0) {
+    if (enemy.hp <= 0) {
         score += (currentLvl * 100);
-        if(currentLvl === 10) { 
-            saveScore(); 
-            state = "victory"; 
+        if (currentLvl === 10) {
+            saveScore();
+            changeState("victory");
         } else {
-            player.ore += (currentLvl * 5); 
+            player.ore += (currentLvl * 5);
             player.points += 2;
             player.hp = player.maxHp;
-            levelUpTimer = 120; 
-            state = "camp"; 
+            levelUpTimer = 120;
+            changeState("camp");
         }
-    } else if(player.hp <= 0) { 
-        saveScore(); 
-        state = "gameover"; 
+    } else if (player.hp <= 0) {
+        saveScore();
+        changeState("gameover");
     }
 }
 
@@ -118,22 +168,22 @@ function craftItem() {
         return;
     }
     player.ore -= COST;
-    inventoryError = false; 
+    inventoryError = false;
 
     const roll = Math.random();
     let rarity = "COMMON";
     if (roll < 0.10) rarity = "EPIC";
     else if (roll < 0.30) rarity = "RARE";
-    
+
     const possible = ALL_ITEMS.filter(i => i.rarity === rarity);
-    const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random()*possible.length)]));
+    const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
     pendingCraftedItem = newItem;
     craftingAnimTimer = 60; // 1 second animation
 }
 
 function resolveCrafting(keep) {
     if (!craftedItem) return;
-    
+
     if (keep) {
         player.inventory.push(craftedItem);
         addLog(`Forged: ${craftedItem.name}!`, COLORS[`RARITY_${craftedItem.rarity}`]);
@@ -149,22 +199,22 @@ function resolveCrafting(keep) {
 
 function salvageItem(item) {
     if (!item || item === player.weapon || item === player.armor) return;
-    
+
     const refund = item.rarity === "EPIC" ? 8 : (item.rarity === "RARE" ? 5 : 3);
     player.ore += refund;
     player.inventory = player.inventory.filter(i => i !== item);
-    inventoryError = false; 
-    
+    inventoryError = false;
+
     addLog(`Salvaged ${item.name} for ${refund} Ore.`, COLORS.CYAN);
     selectedInvItem = null;
     salvageConfirm = null;
 }
 
-function addLog(txt, col) { log.push({txt, col}); if(log.length > 50) log.shift(); }
+function addLog(txt, col) { log.push({ txt, col }); if (log.length > 50) log.shift(); }
 function spawnText(txt, x, y, col) { particles.push({ txt, x, y, col, life: 1.0, vy: -2 }); }
 
 function saveScore() {
-    highScores.push({name: userName || "Hero", score: score});
-    highScores.sort((a,b) => b.score - a.score);
+    highScores.push({ name: userName || "Hero", score: score });
+    highScores.sort((a, b) => b.score - a.score);
     localStorage.setItem('gauntletScores', JSON.stringify(highScores.slice(0, 5)));
 }

@@ -4,9 +4,9 @@ const ctx = canvas.getContext('2d');
 let state = "menu", userName = "", score = 0, currentLvl = 1;
 let player = {}, enemy = {}, log = [];
 let selAtk = null, selBlk = [], isProcessing = false;
-let pDisplayHp = 0, eDisplayHp = 0, shake = 0, particles = [], fxParticles = [];
+let pDisplayHp = 0, eDisplayHp = 0, fDisplayFury = 0, shake = 0, particles = [], fxParticles = [];
 let highScores = JSON.parse(localStorage.getItem('gauntletScores')) || [];
-let hoveredItem = null, selectedInvItem = null, tooltipPos = {x:0, y:0};
+let hoveredItem = null, selectedInvItem = null, tooltipPos = { x: 0, y: 0 };
 let craftedItem = null;
 let craftingAnimTimer = 0;
 let pendingCraftedItem = null;
@@ -15,12 +15,15 @@ let pendingCraftedItem = null;
 let assetsLoaded = 0;
 let totalAssets = 0;
 let isLoaded = false;
+let transitionAlpha = 0;
+let nextState = null;
+let isTransitioning = false;
 
 const assets = {};
-function loadAsset(key, path) { 
+function loadAsset(key, path) {
     totalAssets++;
-    const img = new Image(); 
-    img.src = path; 
+    const img = new Image();
+    img.src = path;
     img.onload = () => {
         assetsLoaded++;
         if (assetsLoaded === totalAssets) isLoaded = true;
@@ -30,7 +33,7 @@ function loadAsset(key, path) {
         assetsLoaded++;
         if (assetsLoaded === totalAssets) isLoaded = true;
     };
-    assets[key] = img; 
+    assets[key] = img;
 }
 
 // Begin loading sequence
@@ -44,7 +47,7 @@ loadAsset('camp_champion', 'assets/camp_icon_champion.png');
 loadAsset('camp_craft', 'assets/camp_icon_craft.png');
 loadAsset('fight_btn', 'assets/fight_button.png');
 
-for(let i=1; i<=10; i++) loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
+for (let i = 1; i <= 10; i++) loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
 Object.keys(ZONE_NAMES).forEach(id => loadAsset(`icon_${id}`, `assets/${ZONE_NAMES[id].toLowerCase()}.png`));
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
