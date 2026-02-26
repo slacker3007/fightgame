@@ -111,7 +111,35 @@ function drawHealthBar(x, y, w, val, max, name) {
 
 function drawSprite(key, x, y, w, h, label, color) {
     if (assets[key] && assets[key].complete) {
-        ctx.drawImage(assets[key], x, y, w, h);
+        // Use sprite sheet logic for player and enemies 1-3
+        const isAnimatedEnemy = key.startsWith('enemy_') && parseInt(key.split('_')[1]) <= 3;
+
+        if (key === 'player' || isAnimatedEnemy) {
+            const cols = 6, rows = 6, totalFrames = 36;
+            const frameIndex = Math.floor(Date.now() / 80) % totalFrames;
+            const sw = assets[key].width / cols;
+            const sh = assets[key].height / rows;
+            const sx = (frameIndex % cols) * sw;
+            const sy = Math.floor(frameIndex / cols) * sh;
+
+            // Maintain aspect ratio
+            const ratio = sw / sh;
+            let drawW = w;
+            let drawH = h;
+
+            if (w / h > ratio) {
+                drawW = h * ratio;
+            } else {
+                drawH = w / ratio;
+            }
+
+            const offsetX = (w - drawW) / 2;
+            const offsetY = (h - drawH) / 2;
+
+            ctx.drawImage(assets[key], sx, sy, sw, sh, x + offsetX, y + offsetY, drawW, drawH);
+        } else {
+            ctx.drawImage(assets[key], x, y, w, h);
+        }
     } else {
         ctx.fillStyle = color || "#323232";
         ctx.fillRect(x, y, w, h);

@@ -37,7 +37,7 @@ function loadAsset(key, path) {
 }
 
 // Begin loading sequence
-loadAsset('player', 'assets/player.png');
+loadAsset('player', 'assets/player_Idle-movement-smooth.png');
 loadAsset('forge_bg', 'assets/crafting_window.png');
 loadAsset('ore', 'assets/ore.png');
 loadAsset('background', 'assets/Background_001.png');
@@ -47,7 +47,10 @@ loadAsset('camp_champion', 'assets/camp_icon_champion.png');
 loadAsset('camp_craft', 'assets/camp_icon_craft.png');
 loadAsset('fight_btn', 'assets/fight_button.png');
 
-for (let i = 1; i <= 10; i++) loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
+for (let i = 1; i <= 10; i++) {
+    const suffix = (i <= 3) ? "_Idle-movement-smooth" : "";
+    loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}${suffix}.png`);
+}
 Object.keys(ZONE_NAMES).forEach(id => loadAsset(`icon_${id}`, `assets/${ZONE_NAMES[id].toLowerCase()}.png`));
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
