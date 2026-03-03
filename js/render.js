@@ -111,35 +111,7 @@ function drawHealthBar(x, y, w, val, max, name) {
 
 function drawSprite(key, x, y, w, h, label, color) {
     if (assets[key] && assets[key].complete) {
-        // Use sprite sheet logic for player and enemies 1-3
-        const isAnimatedEnemy = key.startsWith('enemy_') && parseInt(key.split('_')[1]) <= 3;
-
-        if (key === 'player' || isAnimatedEnemy) {
-            const cols = 6, rows = 6, totalFrames = 36;
-            const frameIndex = Math.floor(Date.now() / 80) % totalFrames;
-            const sw = assets[key].width / cols;
-            const sh = assets[key].height / rows;
-            const sx = (frameIndex % cols) * sw;
-            const sy = Math.floor(frameIndex / cols) * sh;
-
-            // Maintain aspect ratio
-            const ratio = sw / sh;
-            let drawW = w;
-            let drawH = h;
-
-            if (w / h > ratio) {
-                drawW = h * ratio;
-            } else {
-                drawH = w / ratio;
-            }
-
-            const offsetX = (w - drawW) / 2;
-            const offsetY = (h - drawH) / 2;
-
-            ctx.drawImage(assets[key], sx, sy, sw, sh, x + offsetX, y + offsetY, drawW, drawH);
-        } else {
-            ctx.drawImage(assets[key], x, y, w, h);
-        }
+        ctx.drawImage(assets[key], x, y, w, h);
     } else {
         ctx.fillStyle = color || "#323232";
         ctx.fillRect(x, y, w, h);
@@ -214,7 +186,7 @@ function drawCamp() {
 }
 
 function drawForge() {
-    if (assets['forge_bg'] && assets['forge_bg'].complete) ctx.drawImage(assets['forge_bg'], 155, 0, 650, 650);
+    if (assets['forge_bg'] && assets['forge_bg'].complete) ctx.drawImage(assets['forge_bg'], 2, 0, 956, 650);
 
     if (craftingAnimTimer > 0) {
         ctx.textAlign = "center";
@@ -240,7 +212,16 @@ function drawForge() {
         });
     } else {
         ctx.textAlign = "center"; ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Arial";
-        ctx.fillText(`${player.ore} ORE AVAILABLE`, 480, 510);
+        ctx.fillText(`${player.ore} ORE AVAILABLE`, 480, 410);
+
+        // Display Odds
+        const epicCh = 0.05 + (player.total.LUCK * 0.01);
+        const rareCh = 0.15 + (player.total.LUCK * 0.02);
+        ctx.font = "bold 14px Arial";
+        ctx.fillStyle = COLORS.RARITY_EPIC;
+        ctx.fillText(`EPIC CHANCE: ${Math.round(epicCh * 100)}%`, 400, 380);
+        ctx.fillStyle = COLORS.RARITY_RARE;
+        ctx.fillText(`RARE CHANCE: ${Math.round(rareCh * 100)}%`, 560, 380);
 
         if (inventoryError) {
             ctx.fillStyle = "rgba(255, 0, 0, 0.2)"; ctx.fillRect(330, 530, 300, 80);
@@ -249,7 +230,15 @@ function drawForge() {
         }
     }
 
-    uiButtons.forEach(btn => btn.state === "forge" && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
+    uiButtons.forEach(btn => {
+        if (btn.state === "forge") {
+            if (btn.label === "CRAFT" && assets['craft_btn'] && assets['craft_btn'].complete) {
+                ctx.drawImage(assets['craft_btn'], btn.x, btn.y, btn.w, btn.h);
+            } else {
+                drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
+            }
+        }
+    });
 }
 
 function drawCombat() {
@@ -300,9 +289,14 @@ function drawCombat() {
 }
 
 function drawInventory() {
-    ctx.fillStyle = COLORS.PANEL; ctx.fillRect(30, 80, 900, 520);
+    if (assets['champion_bg'] && assets['champion_bg'].complete) {
+        ctx.drawImage(assets['champion_bg'], 30, 80, 900, 520);
+    } else {
+        ctx.fillStyle = COLORS.PANEL; ctx.fillRect(30, 80, 900, 520);
+    }
     ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(30, 80, 900, 520);
     drawSprite('player', 40, 120, 400, 400, "CHAMPION");
+
 
     const centerLine = 410;
 
@@ -310,7 +304,13 @@ function drawInventory() {
     ctx.fillText("EQUIPMENT", centerLine, 120);
     drawSlot(centerLine, 140, "WEAPON", player.weapon, 90);
     drawSlot(centerLine + 100, 140, "ARMOR", player.armor, 90);
+
+    ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 18px Arial"; ctx.textAlign = "left";
     ctx.fillText("STATS", centerLine, 280);
+    if (player.points > 0) {
+        ctx.fillStyle = COLORS.CYAN; ctx.font = "bold 14px Arial";
+        ctx.fillText(`(AVAILABLE POINTS: ${player.points})`, centerLine + 70, 280);
+    }
 
     ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
         const baseY = 315 + i * 40;

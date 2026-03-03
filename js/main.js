@@ -101,7 +101,7 @@ function updateUIButtons() {
             createButton(300, 500, 160, 50, "forge", "KEEP", COLORS.GREEN, () => resolveCrafting(true));
             createButton(500, 500, 160, 50, "forge", "SALVAGE", COLORS.RED, () => resolveCrafting(false));
         } else {
-            createButton(380, 540, 200, 60, "forge", "TRANSMUTE (10)", "#cc8400", () => craftItem());
+            createButton(320, 390, 320, 218, "forge", "CRAFT", "#cc8400", () => craftItem());
             createButton(20, 590, 120, 40, "forge", "BACK", COLORS.GRAY, () => changeState("camp"));
         }
     }

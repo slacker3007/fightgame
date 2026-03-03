@@ -170,10 +170,13 @@ function craftItem() {
     player.ore -= COST;
     inventoryError = false;
 
+    const epicCh = 0.05 + (player.total.LUCK * 0.01);
+    const rareCh = 0.15 + (player.total.LUCK * 0.02);
     const roll = Math.random();
+
     let rarity = "COMMON";
-    if (roll < 0.10) rarity = "EPIC";
-    else if (roll < 0.30) rarity = "RARE";
+    if (roll < epicCh) rarity = "EPIC";
+    else if (roll < epicCh + rareCh) rarity = "RARE";
 
     const possible = ALL_ITEMS.filter(i => i.rarity === rarity);
     const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
