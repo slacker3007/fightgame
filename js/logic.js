@@ -42,6 +42,7 @@ function calcStats() {
 }
 
 function startLevel(lvl) {
+    currentLvl = lvl;
     const d = ENEMY_DATA[lvl - 1];
     enemy = {
         name: d[0],
@@ -52,6 +53,8 @@ function startLevel(lvl) {
         archetype: d[4] || "balanced",
         nextAtk: null
     };
+    player.hp = player.maxHp;
+    pDisplayHp = player.hp;
     eDisplayHp = enemy.hp;
     prepareNextEnemyMove();
     changeState("combat");
@@ -142,6 +145,9 @@ function checkEnd() {
             saveScore();
             changeState("victory");
         } else {
+            if (currentLvl === maxLvl) {
+                maxLvl = Math.min(10, maxLvl + 1);
+            }
             player.ore += (currentLvl * 5);
             player.points += 2;
             player.hp = player.maxHp;

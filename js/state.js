@@ -1,7 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let state = "menu", userName = "", score = 0, currentLvl = 1;
+let state = "menu", userName = "", score = 0, currentLvl = 1, maxLvl = 1;
 let player = {}, enemy = {}, log = [];
 let selAtk = null, selBlk = [], isProcessing = false;
 let pDisplayHp = 0, eDisplayHp = 0, fDisplayFury = 0, shake = 0, particles = [], fxParticles = [];
@@ -48,10 +48,12 @@ loadAsset('camp_craft', 'assets/camp_icon_craft.png');
 loadAsset('fight_btn', 'assets/fight_button.png');
 loadAsset('craft_btn', 'assets/craft_button.png');
 loadAsset('champion_bg', 'assets/Champion_window_background.png');
+loadAsset('camp_bg', 'assets/main_camp_background.png');
 
 
 for (let i = 1; i <= 10; i++) {
     loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
+    loadAsset(`enemy_icon_${i}`, `assets/enemy_lvl_${i}_icon.png`);
 }
 Object.keys(ZONE_NAMES).forEach(id => loadAsset(`icon_${id}`, `assets/${ZONE_NAMES[id].toLowerCase()}.png`));
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));

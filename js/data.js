@@ -10,16 +10,16 @@ const COLORS = {
 const ZONE_NAMES = { "1": "Head", "2": "Chest", "3": "Stomach", "4": "Belt", "5": "Legs" };
 
 const ENEMY_DATA = [
-    ["Scavenger Scout", 60, 10, 0.05, "balanced"],
-    ["Iron-Clad Guard", 160, 12, 0.02, "heavy"],
-    ["Arcane Scribe", 100, 22, 0.10, "balanced"],
-    ["Stalker Prowler", 130, 18, 0.20, "agile"],
-    ["Hollowed Sentinel", 250, 20, 0.05, "heavy"],
-    ["Void-Caller Acolyte", 200, 30, 0.10, "balanced"],
-    ["Blood-Oath Duelist", 220, 35, 0.15, "agile"],
-    ["Ruin-Knight Exemplar", 400, 45, 0.05, "heavy"],
-    ["Void-General Malakor", 500, 55, 0.15, "agile"],
-    ["AETHELGARD", 1200, 85, 0.10, "boss"]
+    ["Scavenger Scout", 60, 10, 0.05, "balanced", 0],
+    ["Iron-Clad Guard", 160, 12, 0.02, "heavy", 1],
+    ["Arcane Scribe", 100, 22, 0.10, "balanced", 2],
+    ["Stalker Prowler", 130, 18, 0.20, "agile", 3],
+    ["Hollowed Sentinel", 250, 20, 0.05, "heavy", 4],
+    ["Void-Caller Acolyte", 200, 30, 0.10, "balanced", 5],
+    ["Blood-Oath Duelist", 220, 35, 0.15, "agile", 6],
+    ["Ruin-Knight Exemplar", 400, 45, 0.05, "heavy", 7],
+    ["Void-General Malakor", 500, 55, 0.15, "agile", 8],
+    ["AETHELGARD", 1200, 85, 0.10, "boss", 9]
 ];
 
 const ALL_ITEMS = [

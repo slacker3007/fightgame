@@ -86,12 +86,10 @@ function handleCombatClick(mx, my) {
 function updateUIButtons() {
     uiButtons = [];
     if (state === "camp") {
-        createButton(80, 250, 244, 256, "camp", "CHAMPION", COLORS.BTN_BLUE, () => changeState("inventory"));
-        createButton(360, 250, 244, 256, "camp", "FORGE", "#5a32a8", () => changeState("forge"));
-        createButton(640, 250, 244, 256, "camp", "BATTLE", COLORS.RED, () => {
-            currentLvl++;
-            if (currentLvl > 10) currentLvl = 10;
-            startLevel(currentLvl);
+        createButton(29, 150, 281, 297, "camp", "CHAMPION", COLORS.BTN_BLUE, () => changeState("inventory"));
+        createButton(340, 150, 281, 297, "camp", "FORGE", "#5a32a8", () => changeState("forge"));
+        createButton(651, 150, 281, 297, "camp", "BATTLE", COLORS.RED, () => {
+            changeState("battle_select");
         });
     }
     if (state === "forge") {
@@ -135,6 +133,22 @@ function updateUIButtons() {
             }
         }
     }
+    if (state === "battle_select") {
+        createButton(405, 590, 150, 40, "battle_select", "BACK", COLORS.GRAY, () => changeState("camp"));
+
+        const barWidth = 700, startX = (canvas.width - barWidth) / 2, startY = 150, slotW = barWidth / 5;
+        for (let i = 1; i <= 10; i++) {
+            const row = Math.floor((i - 1) / 5);
+            const col = (i - 1) % 5;
+            const x = startX + col * slotW + 10;
+            const y = startY + row * 150;
+
+            if (i === maxLvl) {
+                const btn = { x, y, w: slotW - 20, h: 120, state: "battle_select", label: "", color: "transparent", action: () => startLevel(i), noDraw: true };
+                uiButtons.push(btn);
+            }
+        }
+    }
     if (state === "combat" && selAtk && selBlk.length === 2 && !isProcessing) {
         createButton(400, 260, 160, 88, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
 
@@ -147,7 +161,7 @@ function updateUIButtons() {
     }
     if (state === "gameover" || state === "victory") {
         createButton(380, 480, 200, 60, state, "NEW JOURNEY", COLORS.BTN_BLUE, () => {
-            changeState("menu"); userName = ""; score = 0; currentLvl = 1;
+            changeState("menu"); userName = ""; score = 0; currentLvl = 1; maxLvl = 1;
         });
     }
 }
@@ -246,9 +260,8 @@ function gameLoop() {
         else if (state === "forge") drawForge();
         else if (state === "combat") drawCombat();
         else if (state === "inventory") drawInventory();
+        else if (state === "battle_select") drawBattleSelect();
         else if (state === "gameover" || state === "victory") drawEnd();
-
-        if (["combat", "inventory", "camp", "forge"].includes(state)) drawProgressBar();
         drawFxParticles();
 
         particles.forEach((p, i) => {

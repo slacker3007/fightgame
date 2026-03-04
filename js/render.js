@@ -84,22 +84,6 @@ function drawLevelUp() {
     levelUpTimer--;
 }
 
-function drawProgressBar() {
-    const barWidth = 700, startX = (canvas.width - barWidth) / 2, startY = 20, slotW = barWidth / 10;
-    for (let i = 1; i <= 10; i++) {
-        const x = startX + (i - 1) * slotW, isDefeated = i < currentLvl, isCurrent = i === currentLvl;
-        ctx.fillStyle = isDefeated ? COLORS.GRAY : (isCurrent ? COLORS.CYAN : "rgba(40, 40, 60, 0.6)");
-        ctx.fillRect(x + 5, startY, slotW - 10, 24);
-        ctx.strokeStyle = isCurrent ? COLORS.GOLD : COLORS.WHITE;
-        ctx.strokeRect(x + 5, startY, slotW - 10, 24);
-        if (isDefeated) {
-            ctx.strokeStyle = COLORS.RED; ctx.lineWidth = 2; ctx.beginPath();
-            ctx.moveTo(x + 8, startY + 4); ctx.lineTo(x + slotW - 12, startY + 20);
-            ctx.moveTo(x + slotW - 12, startY + 4); ctx.lineTo(x + 8, startY + 20); ctx.stroke();
-            ctx.lineWidth = 1;
-        }
-    }
-}
 
 function drawHealthBar(x, y, w, val, max, name) {
     ctx.fillStyle = "rgba(200, 50, 50, 0.3)"; ctx.fillRect(x, y, w, 20);
@@ -146,6 +130,10 @@ function drawMenu() {
 }
 
 function drawCamp() {
+    if (assets['camp_bg'] && assets['camp_bg'].complete) {
+        ctx.drawImage(assets['camp_bg'], 0, 0, 960, 650);
+    }
+    /* 
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.GOLD;
     ctx.font = "bold 45px 'Segoe UI', Arial";
@@ -153,21 +141,20 @@ function drawCamp() {
     ctx.shadowColor = COLORS.GOLD;
     ctx.fillText("MAIN CAMP", 480, 80);
     ctx.shadowBlur = 0;
+    */
 
-    ctx.font = "bold 20px Arial";
-    ctx.fillStyle = COLORS.WHITE;
-    ctx.fillText(`Stage Progress: ${currentLvl} / 10`, 480, 120);
-
-    // Ore Display
+    // Ore Display - Moved under Forge/Craft icon (which is at y=150, h=297 -> bottom y=447)
+    const oreY = 460;
     ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(410, 135, 140, 40);
+    ctx.fillRect(410, oreY, 140, 40);
     ctx.strokeStyle = COLORS.GOLD;
-    ctx.strokeRect(410, 135, 140, 40);
+    ctx.strokeRect(410, oreY, 140, 40);
 
     ctx.fillStyle = COLORS.CYAN;
     ctx.textAlign = "left";
-    ctx.fillText(`ORE: ${player.ore}`, 450, 163);
-    if (assets['ore'] && assets['ore'].complete) ctx.drawImage(assets['ore'], 415, 142, 25, 25);
+    ctx.font = "bold 20px 'Segoe UI', Arial"; // Ensure font is set for ore text
+    ctx.fillText(`ORE: ${player.ore}`, 450, oreY + 28);
+    if (assets['ore'] && assets['ore'].complete) ctx.drawImage(assets['ore'], 415, oreY + 7, 25, 25);
 
     const iconMap = { "CHAMPION": "camp_champion", "FORGE": "camp_craft", "BATTLE": "camp_battle" };
     uiButtons.forEach(btn => {
@@ -244,16 +231,16 @@ function drawForge() {
 function drawCombat() {
     drawSprite('player', 20, 130, 350, 350, "HERO");
     drawSprite(`enemy_${currentLvl}`, 590, 130, 350, 350, enemy.name);
-    drawHealthBar(40, 90, 300, pDisplayHp, player.maxHp, userName);
-    drawHealthBar(620, 90, 300, eDisplayHp, enemy.maxHp, enemy.name);
+    drawHealthBar(40, 70, 300, pDisplayHp, player.maxHp, userName);
+    drawHealthBar(620, 70, 300, eDisplayHp, enemy.maxHp, enemy.name);
 
     // Fury Bar
     fDisplayFury += (player.fury - fDisplayFury) * 0.1;
-    ctx.fillStyle = "rgba(40, 40, 40, 0.5)"; ctx.fillRect(40, 115, 300, 10);
-    ctx.fillStyle = COLORS.GOLD; ctx.fillRect(40, 115, 300 * (fDisplayFury / player.maxFury), 10);
-    ctx.strokeStyle = "white"; ctx.strokeRect(40, 115, 300, 10);
+    ctx.fillStyle = "rgba(40, 40, 40, 0.5)"; ctx.fillRect(40, 95, 300, 10);
+    ctx.fillStyle = COLORS.GOLD; ctx.fillRect(40, 95, 300 * (fDisplayFury / player.maxFury), 10);
+    ctx.strokeStyle = "white"; ctx.strokeRect(40, 95, 300, 10);
     ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 10px Arial"; ctx.textAlign = "left";
-    ctx.fillText("FURY", 40, 112);
+    ctx.fillText("FURY", 40, 92);
 
     for (let i = 1; i <= 5; i++) {
         const id = i.toString(), y = 140 + (i - 1) * 65;
@@ -267,9 +254,9 @@ function drawCombat() {
     if (!isProcessing) {
         ctx.textAlign = "center"; ctx.font = "bold 16px Arial";
         ctx.fillStyle = (selBlk.length === 2) ? COLORS.GREEN : COLORS.CYAN;
-        ctx.fillText(`DEFENSE: ${selBlk.length}/2`, 350, 130);
+        ctx.fillText(`DEFENSE: ${selBlk.length}/2`, 350, 125);
         ctx.fillStyle = (selAtk) ? COLORS.GREEN : COLORS.RED;
-        ctx.fillText(`ATTACK: ${selAtk ? 1 : 0}/1`, 610, 130);
+        ctx.fillText(`ATTACK: ${selAtk ? 1 : 0}/1`, 610, 125);
     }
 
     uiButtons.forEach(btn => {
@@ -385,4 +372,114 @@ function drawEnd() {
         ctx.fillText(`${i + 1}. ${s.name}: ${s.score}`, 480, 200 + i * 30);
     });
     uiButtons.forEach(btn => btn.state === state && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
+}
+
+function drawBattleSelect() {
+    // Overlay background
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillRect(0, 0, 960, 650);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 40px 'Segoe UI', Arial";
+    ctx.fillText("SELECT YOUR NEXT BATTLE", 480, 100);
+
+    // Reuse progress bar logic for visualization but standalone
+    const barWidth = 700, startX = (canvas.width - barWidth) / 2, startY = 150, slotW = barWidth / 5;
+
+    // Draw 10 levels in 2 rows
+    for (let i = 1; i <= 10; i++) {
+        const row = Math.floor((i - 1) / 5);
+        const col = (i - 1) % 5;
+        const x = startX + col * slotW;
+        const y = startY + row * 150;
+
+        const isDefeated = i < maxLvl;
+        const isNext = i === maxLvl;
+        const isLocked = i > maxLvl;
+
+        // Slot Background
+        if (isDefeated) {
+            ctx.fillStyle = "rgba(50, 70, 50, 0.4)";
+        } else if (isNext) {
+            ctx.fillStyle = "rgba(0, 255, 255, 0.15)";
+        } else {
+            ctx.fillStyle = "rgba(20, 20, 30, 0.8)";
+        }
+        ctx.fillRect(x + 10, y, slotW - 20, 120);
+
+        // Border
+        if (isDefeated) {
+            ctx.strokeStyle = "rgba(0, 255, 0, 0.3)";
+        } else if (isNext) {
+            ctx.strokeStyle = COLORS.GOLD;
+            ctx.lineWidth = 3;
+        } else {
+            ctx.strokeStyle = COLORS.GRAY;
+        }
+        ctx.strokeRect(x + 10, y, slotW - 20, 120);
+        ctx.lineWidth = 1;
+
+        // Level Number
+        ctx.fillStyle = isLocked ? COLORS.GRAY : (isNext ? COLORS.WHITE : "rgba(255,255,255,0.5)");
+        ctx.font = "bold 18px 'Segoe UI', Arial";
+        ctx.fillText(`LEVEL ${i}`, x + slotW / 2, y + 25);
+
+        // Icon Area
+        const iconSize = 80;
+        const iconX = x + slotW / 2 - iconSize / 2;
+        const iconY = y + 35;
+
+        // Draw Icon
+        const iconKey = `enemy_icon_${i}`;
+        ctx.save();
+        if (isLocked) ctx.globalAlpha = 0.3;
+        if (isDefeated) ctx.globalAlpha = 0.6;
+
+        if (assets[iconKey] && assets[iconKey].complete) {
+            ctx.drawImage(assets[iconKey], iconX, iconY, iconSize, iconSize);
+        } else {
+            ctx.fillStyle = "rgba(0,0,0,0.3)";
+            ctx.fillRect(iconX, iconY, iconSize, iconSize);
+        }
+        ctx.restore();
+
+        // Status / Highlights
+        if (isDefeated) {
+            ctx.fillStyle = COLORS.GREEN;
+            ctx.font = "bold 12px Arial";
+            ctx.fillText("BEATEN", x + slotW / 2, y + 115);
+
+            // Large green checkmark
+            ctx.strokeStyle = COLORS.GREEN; ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(iconX + 10, iconY + 40);
+            ctx.lineTo(iconX + 35, iconY + 70);
+            ctx.lineTo(iconX + 70, iconY + 20);
+            ctx.stroke();
+            ctx.lineWidth = 1;
+        } else if (isNext) {
+            // Glowing border for current level
+            ctx.strokeStyle = COLORS.GOLD;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = COLORS.GOLD;
+            ctx.strokeRect(iconX, iconY, iconSize, iconSize);
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = COLORS.GOLD;
+            ctx.font = "bold 14px Arial";
+            ctx.fillText("AVAILABLE", x + slotW / 2, y + 115);
+        } else {
+            ctx.fillStyle = COLORS.GRAY;
+            ctx.font = "bold 12px Arial";
+            ctx.fillText("LOCKED", x + slotW / 2, y + 115);
+        }
+    }
+
+    uiButtons.forEach(btn => {
+        if (btn.state === "battle_select" && !btn.noDraw) {
+            drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
+        }
+    });
 }
