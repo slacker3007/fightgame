@@ -1,7 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let state = "menu", userName = "", score = 0, currentLvl = 1, maxLvl = 1;
+let state = "char_select", userName = "", score = 0, currentLvl = 1, maxLvl = 1;
 let player = {}, enemy = {}, log = [];
 let selAtk = null, selBlk = [], isProcessing = false;
 let pDisplayHp = 0, eDisplayHp = 0, fDisplayFury = 0, shake = 0, particles = [], fxParticles = [];
@@ -37,6 +37,10 @@ function loadAsset(key, path) {
 }
 
 // Begin loading sequence
+loadAsset('player_STR', 'assets/player_STR.png');
+loadAsset('player_DEX', 'assets/player_DEX.png');
+loadAsset('player_LUCK', 'assets/player_luck.png');
+loadAsset('player_STA', 'assets/player_STA.png');
 loadAsset('player', 'assets/player.png');
 loadAsset('forge_bg', 'assets/crafting_window.png');
 loadAsset('ore', 'assets/ore.png');
@@ -49,6 +53,8 @@ loadAsset('fight_btn', 'assets/fight_button.png');
 loadAsset('craft_btn', 'assets/craft_button.png');
 loadAsset('champion_bg', 'assets/Champion_window_background.png');
 loadAsset('camp_bg', 'assets/main_camp_background.png');
+
+let selectedChar = null;
 
 
 for (let i = 1; i <= 10; i++) {

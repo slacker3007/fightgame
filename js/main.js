@@ -22,8 +22,11 @@ canvas.addEventListener('mousedown', e => {
         return;
     }
 
-    if (state === "menu" && userName.length > 0) {
-        startGame();
+    if (state === "char_select") {
+        // Handled by uiButtons
+    }
+    else if (state === "name_menu") {
+        // Handled by uiButtons (Start Game / Back)
     }
     else if (state === "inventory") {
         handleInventoryClick(mx, my);
@@ -34,7 +37,7 @@ canvas.addEventListener('mousedown', e => {
 });
 
 function startGame() {
-    initPlayer();
+    initPlayer(selectedChar);
     currentLvl = 1;
     startLevel(1);
     if (typeof bgVideo !== 'undefined') bgVideo.play();
@@ -85,6 +88,23 @@ function handleCombatClick(mx, my) {
 
 function updateUIButtons() {
     uiButtons = [];
+    if (state === "char_select") {
+        const chars = ["STR", "DEX", "LUCK", "STA"];
+        chars.forEach((c, i) => {
+            const x = 50 + i * 225 + 20;
+            const y = 150 + 340;
+            createButton(x, y, 170, 40, "char_select", "SELECT", COLORS.BTN_BLUE, () => {
+                selectedChar = c;
+                changeState("name_menu");
+            });
+        });
+    }
+    if (state === "name_menu") {
+        createButton(20, 590, 120, 40, "name_menu", "BACK", COLORS.GRAY, () => changeState("char_select"));
+        if (userName.length > 0) {
+            createButton(400, 590, 160, 40, "name_menu", "START GAME", COLORS.GREEN, () => startGame());
+        }
+    }
     if (state === "camp") {
         createButton(29, 150, 281, 297, "camp", "CHAMPION", COLORS.BTN_BLUE, () => changeState("inventory"));
         createButton(340, 150, 281, 297, "camp", "FORGE", "#5a32a8", () => changeState("forge"));
@@ -161,13 +181,13 @@ function updateUIButtons() {
     }
     if (state === "gameover" || state === "victory") {
         createButton(380, 480, 200, 60, state, "NEW JOURNEY", COLORS.BTN_BLUE, () => {
-            changeState("menu"); userName = ""; score = 0; currentLvl = 1; maxLvl = 1;
+            changeState("char_select"); userName = ""; score = 0; currentLvl = 1; maxLvl = 1;
         });
     }
 }
 
 window.addEventListener('keydown', e => {
-    if (state === "menu") {
+    if (state === "name_menu") {
         if (e.key === "Enter" && userName.length > 0) {
             startGame();
         }
@@ -255,7 +275,8 @@ function gameLoop() {
         eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
         updateUIButtons();
 
-        if (state === "menu") drawMenu();
+        if (state === "char_select") drawCharSelect();
+        else if (state === "name_menu") drawMenu();
         else if (state === "camp") drawCamp();
         else if (state === "forge") drawForge();
         else if (state === "combat") drawCombat();

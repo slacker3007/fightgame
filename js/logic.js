@@ -1,9 +1,19 @@
 const INV_LIMIT = 20;
 let inventoryError = false;
 
-function initPlayer() {
+function initPlayer(charType) {
+    selectedChar = charType;
+    let base = { STR: 1, DEX: 1, STA: 1, LUCK: 1 };
+    if (charType === "STR") base.STR = 5;
+    if (charType === "DEX") base.DEX = 5;
+    if (charType === "LUCK") base.LUCK = 5;
+    if (charType === "STA") base.STA = 5;
+
+    // Map the selected character asset to the generic 'player' key used in rendering
+    assets['player'] = assets[`player_${charType}`];
+
     player = {
-        baseSTR: 5, baseDEX: 5, baseSTA: 5, baseLUCK: 5,
+        baseSTR: base.STR, baseDEX: base.DEX, baseSTA: base.STA, baseLUCK: base.LUCK,
         hp: 0, maxHp: 0,
         fury: 0, maxFury: 100, isGodStrike: false,
         weapon: null, armor: null,
@@ -11,14 +21,14 @@ function initPlayer() {
         ore: 0,
         points: 0,
         bonus: { STR: 0, DEX: 0, STA: 0, LUCK: 0 },
-        total: { STR: 5, DEX: 5, STA: 5, LUCK: 5 }
+        total: { STR: base.STR, DEX: base.DEX, STA: base.STA, LUCK: base.LUCK }
     };
     calcStats();
     player.hp = player.maxHp;
     pDisplayHp = player.hp;
     log = [];
     inventoryError = false;
-    addLog("Welcome to the Gauntlet.", COLORS.GOLD);
+    addLog(`Welcome, ${charType} Champion.`, COLORS.GOLD);
 }
 
 function calcStats() {

@@ -122,11 +122,64 @@ function drawSlot(x, y, label, item, size = 120) {
 }
 
 function drawMenu() {
-    ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 50px Arial";
-    ctx.fillText("GAUNTLET ARENA", 480, 250);
-    ctx.fillStyle = COLORS.WHITE; ctx.font = "20px Arial"; ctx.fillText("ENTER NAME & PRESS ENTER", 480, 320);
-    ctx.fillStyle = "#28283C"; ctx.fillRect(330, 340, 300, 50);
-    ctx.fillStyle = COLORS.CYAN; ctx.fillText(userName + (Math.floor(Date.now() / 500) % 2 == 0 ? "|" : ""), 480, 372);
+    ctx.fillStyle = "rgba(0,0,0,0.9)"; ctx.fillRect(0, 0, 960, 650);
+    ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 40px Arial";
+    ctx.fillText("NAME YOUR CHAMPION", 480, 150);
+    
+    if (selectedChar) {
+        drawSprite(`player_${selectedChar}`, 380, 180, 200, 200, selectedChar);
+        ctx.fillStyle = COLORS.CYAN; ctx.font = "bold 24px Arial";
+        ctx.fillText(selectedChar + " CLASS", 480, 420);
+    }
+
+    ctx.fillStyle = COLORS.WHITE; ctx.font = "20px Arial"; ctx.fillText("TYPE NAME & CLICK 'START GAME' TO BEGIN", 480, 460);
+    ctx.fillStyle = "#28283C"; ctx.fillRect(330, 480, 300, 50);
+    ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(330, 480, 300, 50);
+    ctx.fillStyle = COLORS.CYAN; ctx.font = "bold 24px Arial";
+    ctx.fillText(userName + (Math.floor(Date.now() / 500) % 2 == 0 ? "|" : ""), 480, 515);
+
+    uiButtons.forEach(btn => btn.state === state && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
+}
+
+function drawCharSelect() {
+    ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0, 0, 960, 650);
+    ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 40px Arial";
+    ctx.fillText("CHOOSE YOUR DESTINY", 480, 80);
+
+    const chars = ["STR", "DEX", "LUCK", "STA"];
+    const labels = ["WARRIOR", "ROGUE", "GAMBLER", "DEFENDER"];
+    const descriptions = [
+        "High strength, high damage.",
+        "High dexterity, high dodge.",
+        "High luck, high crit & craft rate.",
+        "High stamina, high health."
+    ];
+
+    chars.forEach((c, i) => {
+        const x = 50 + i * 225, y = 150, w = 210, h = 400;
+        
+        ctx.fillStyle = "rgba(255,255,255,0.05)";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = (selectedChar === c) ? COLORS.CYAN : COLORS.GOLD;
+        ctx.lineWidth = (selectedChar === c) ? 4 : 2;
+        ctx.strokeRect(x, y, w, h);
+
+        drawSprite(`player_${c}`, x + 5, y + 50, 200, 200, c);
+
+        ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Arial";
+        ctx.fillText(labels[i], x + 105, y + 40);
+
+        ctx.font = "bold 18px Arial"; ctx.fillStyle = COLORS.CYAN;
+        ctx.fillText(c + " FOCUS", x + 105, y + 270);
+
+        ctx.font = "14px Arial"; ctx.fillStyle = COLORS.GRAY;
+        const words = descriptions[i].split(" ");
+        ctx.fillText(words.slice(0, 2).join(" "), x + 105, y + 300);
+        ctx.fillText(words.slice(2).join(" "), x + 105, y + 320);
+
+        // Buttons are handled by logic, we just draw the visual placeholder or label
+        drawStyledBtn(x + 20, y + 340, 170, 40, "SELECT", COLORS.BTN_BLUE);
+    });
 }
 
 function drawCamp() {
