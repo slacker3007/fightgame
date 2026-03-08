@@ -356,7 +356,8 @@ function drawInventory() {
         const baseY = 315 + i * 40;
         const baseVal = player["base" + s];
         const bonusVal = player.bonus[s];
-        const isMax = baseVal >= 20;
+        const maxVal = player.maxStats[s];
+        const isMax = baseVal >= maxVal;
 
         ctx.textAlign = "left"; ctx.font = "20px Arial";
         ctx.fillStyle = isMax ? COLORS.GOLD : COLORS.WHITE;

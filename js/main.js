@@ -66,7 +66,8 @@ function handleInventoryClick(mx, my) {
 
     ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
         const buttonY = 315 + i * 40 - 20;
-        if (player.points > 0 && player["base" + s] < 20 && mx > centerLine + 220 && mx < centerLine + 246 && my > buttonY && my < buttonY + 26) {
+        const maxVal = player.maxStats[s];
+        if (player.points > 0 && player["base" + s] < maxVal && mx > centerLine + 220 && mx < centerLine + 246 && my > buttonY && my < buttonY + 26) {
             player["base" + s]++;
             player.points--;
             calcStats();

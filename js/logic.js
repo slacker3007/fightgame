@@ -1,6 +1,10 @@
 const INV_LIMIT = 20;
 let inventoryError = false;
 
+function getMaxStat(charType, statName) {
+    return (charType === statName) ? 15 : 10;
+}
+
 function initPlayer(charType) {
     selectedChar = charType;
     let base = { STR: 1, DEX: 1, STA: 1, LUCK: 1 };
@@ -14,6 +18,12 @@ function initPlayer(charType) {
 
     player = {
         baseSTR: base.STR, baseDEX: base.DEX, baseSTA: base.STA, baseLUCK: base.LUCK,
+        maxStats: {
+            STR: getMaxStat(charType, "STR"),
+            DEX: getMaxStat(charType, "DEX"),
+            STA: getMaxStat(charType, "STA"),
+            LUCK: getMaxStat(charType, "LUCK")
+        },
         hp: 0, maxHp: 0,
         fury: 0, maxFury: 100, isGodStrike: false,
         weapon: null, armor: null,
