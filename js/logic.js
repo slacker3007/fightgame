@@ -7,7 +7,7 @@ function getMaxStat(charType, statName) {
 
 function initPlayer(charType) {
     selectedChar = charType;
-    let base = { STR: 1, DEX: 1, STA: 1, LUCK: 1 };
+    let base = { STR: 2, DEX: 2, STA: 2, LUCK: 2 };
     if (charType === "STR") base.STR = 5;
     if (charType === "DEX") base.DEX = 5;
     if (charType === "LUCK") base.LUCK = 5;
@@ -59,6 +59,12 @@ function calcStats() {
     player.dmg = 10 + (player.total.STR * 4);
     player.dodge = Math.min(0.60, player.total.DEX * 0.02);
     player.crit = Math.min(0.50, player.total.LUCK * 0.03);
+
+    // Special Abilities
+    if (player.total.DEX >= 15) {
+        player.dodge += 0.10;
+        player.crit += 0.10;
+    }
 }
 
 function startLevel(lvl) {
@@ -131,6 +137,14 @@ async function resolveTurn() {
         addLog(`You hit for ${d}!`, COLORS.RED);
         spawnText(d + (crit ? "!!" : ""), 750, 250, COLORS.RED);
 
+        // STR Special Ability: Spill Damage
+        if (player.total.STR >= 15) {
+            const spill = Math.floor(d * 0.10);
+            enemy.hp -= spill;
+            addLog(`Spill DMG: ${spill}!`, COLORS.RARITY_LEGENDARY);
+            spawnText(spill, 750, 280, COLORS.RARITY_LEGENDARY);
+        }
+
         if (!useGodStrike) player.fury = Math.min(player.maxFury, player.fury + 15);
     }
 
@@ -144,10 +158,17 @@ async function resolveTurn() {
             shake = 2;
             player.fury = Math.min(player.maxFury, player.fury + 10);
         } else {
-            player.hp -= enemy.dmg;
+            let d = enemy.dmg;
+            // STA Special Ability: Damage Reduction
+            if (player.total.STA >= 15) {
+                const reduced = Math.floor(d * 0.20);
+                d -= reduced;
+                addLog(`Mitigated ${reduced} DMG!`, COLORS.GREEN);
+            }
+            player.hp -= d;
             shake = 12;
             addLog(`Enemy hit your ${ZONE_NAMES[eAtk]}!`, COLORS.RED);
-            spawnText("-" + enemy.dmg, 180, 250, COLORS.RED);
+            spawnText("-" + d, 180, 250, COLORS.RED);
             player.fury = Math.min(player.maxFury, player.fury + 20);
         }
     }
@@ -198,11 +219,13 @@ function craftItem() {
 
     const epicCh = 0.05 + (player.total.LUCK * 0.01);
     const rareCh = 0.15 + (player.total.LUCK * 0.02);
+    const legCh = (player.total.LUCK >= 15) ? 0.02 : 0;
     const roll = Math.random();
 
     let rarity = "COMMON";
-    if (roll < epicCh) rarity = "EPIC";
-    else if (roll < epicCh + rareCh) rarity = "RARE";
+    if (roll < legCh) rarity = "LEGENDARY";
+    else if (roll < legCh + epicCh) rarity = "EPIC";
+    else if (roll < legCh + epicCh + rareCh) rarity = "RARE";
 
     const possible = ALL_ITEMS.filter(i => i.rarity === rarity);
     const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));

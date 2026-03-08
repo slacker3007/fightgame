@@ -4,7 +4,7 @@ const COLORS = {
     DARK_BG: "#0a0a0f", CYAN: "#00FFFF", PANEL: "rgba(40, 40, 60, 0.95)",
     ENEMY_PANEL: "rgba(60, 40, 40, 0.85)", LOG_BG: "rgba(5, 5, 10, 0.9)",
     SLOT_BG: "rgba(20, 20, 30, 0.9)", RARITY_COMMON: "#FFFFFF", RARITY_RARE: "#46A0FF",
-    RARITY_EPIC: "#A335EE", BTN_BLUE: "#005a8c"
+    RARITY_EPIC: "#A335EE", RARITY_LEGENDARY: "#FF8C00", BTN_BLUE: "#005a8c"
 };
 
 const ZONE_NAMES = { "1": "Head", "2": "Chest", "3": "Stomach", "4": "Belt", "5": "Legs" };
@@ -32,5 +32,7 @@ const ALL_ITEMS = [
     { name: "Reinforced Garb", type: "armor", STA: 4, DEX: 3, rarity: "COMMON" },
     { name: "Plate Mail", type: "armor", STA: 8, DEX: -2, rarity: "COMMON" },
     { name: "Ninja Suit", type: "armor", STA: 2, DEX: 10, rarity: "RARE" },
-    { name: "Dragon Scale", type: "armor", STA: 12, DEX: 4, rarity: "EPIC" }
+    { name: "Dragon Scale", type: "armor", STA: 12, DEX: 4, rarity: "EPIC" },
+    { name: "Sunstrider Sword", type: "weapon", STR: 20, LUCK: 10, rarity: "LEGENDARY" },
+    { name: "Soulguard Plate", type: "armor", STA: 20, DEX: 5, rarity: "LEGENDARY" }
 ];

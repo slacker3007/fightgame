@@ -170,14 +170,16 @@ function updateUIButtons() {
             }
         }
     }
-    if (state === "combat" && selAtk && selBlk.length === 2 && !isProcessing) {
-        createButton(400, 260, 160, 88, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
-
+    if (state === "combat" && !isProcessing && selAtk && selBlk.length === 2) {
         if (player.fury >= player.maxFury) {
-            createButton(400, 360, 160, 40, "combat", "GOD STRIKE", COLORS.GOLD, () => {
+            // Stacked square buttons for choice
+            createButton(410, 180, 140, 140, "combat", "REGULAR", COLORS.RED, () => resolveTurn());
+            createButton(410, 330, 140, 140, "combat", "GOD STRIKE", COLORS.GOLD, () => {
                 player.isGodStrike = true;
                 resolveTurn();
             });
+        } else {
+            createButton(410, 240, 140, 140, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
         }
     }
     if (state === "gameover" || state === "victory") {

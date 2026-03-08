@@ -263,6 +263,12 @@ function drawForge() {
         ctx.fillStyle = COLORS.RARITY_RARE;
         ctx.fillText(`RARE CHANCE: ${Math.round(rareCh * 100)}%`, 560, 380);
 
+        if (player.total.LUCK >= 15) {
+            const legCh = 0.02;
+            ctx.fillStyle = COLORS.RARITY_LEGENDARY;
+            ctx.fillText(`LEGENDARY CHANCE: ${Math.round(legCh * 100)}%`, 480, 360);
+        }
+
         if (inventoryError) {
             ctx.fillStyle = "rgba(255, 0, 0, 0.2)"; ctx.fillRect(330, 530, 300, 80);
             ctx.fillStyle = COLORS.RED; ctx.font = "bold 22px Arial"; ctx.fillText("INVENTORY FULL!", 480, 565);
@@ -314,8 +320,12 @@ function drawCombat() {
 
     uiButtons.forEach(btn => {
         if (btn.state === "combat") {
-            if (btn.label === "FIGHT!" && assets['fight_btn'] && assets['fight_btn'].complete) ctx.drawImage(assets['fight_btn'], btn.x, btn.y, btn.w, btn.h);
-            else drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
+            const isFightBtn = (btn.label === "FIGHT!" || btn.label === "REGULAR");
+            if (isFightBtn && assets['fight_btn'] && assets['fight_btn'].complete) {
+                ctx.drawImage(assets['fight_btn'], btn.x, btn.y, btn.w, btn.h);
+            } else {
+                drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
+            }
         }
     });
 
@@ -371,6 +381,18 @@ function drawInventory() {
         if (player.points > 0 && !isMax) {
             ctx.fillStyle = COLORS.GREEN; ctx.fillRect(centerLine + 220, baseY - 20, 26, 26);
             ctx.fillStyle = COLORS.WHITE; ctx.textAlign = "center"; ctx.fillText("+", centerLine + 233, baseY + 1);
+        }
+
+        // Special Ability Description
+        if (isMax) {
+            ctx.font = "italic 14px Arial"; ctx.fillStyle = COLORS.CYAN;
+            ctx.textAlign = "right";
+            let desc = "";
+            if (s === "STR") desc = "AOE SPILL DMG (10%)";
+            if (s === "DEX") desc = "+10% DODGE & CRIT";
+            if (s === "STA") desc = "-20% DMG TAKEN";
+            if (s === "LUCK") desc = "LEGENDARY CRAFTING";
+            ctx.fillText(desc, centerLine + 246, baseY + 18);
         }
     });
 
