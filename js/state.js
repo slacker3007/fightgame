@@ -53,6 +53,7 @@ loadAsset('fight_btn', 'assets/fight_button.png');
 loadAsset('craft_btn', 'assets/craft_button.png');
 loadAsset('champion_bg', 'assets/Champion_window_background.png');
 loadAsset('camp_bg', 'assets/main_camp_background.png');
+loadAsset('god_strike_btn', 'assets/god_strike_button.png');
 
 let selectedChar = null;
 

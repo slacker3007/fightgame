@@ -263,7 +263,7 @@ function drawForge() {
         ctx.fillStyle = COLORS.RARITY_RARE;
         ctx.fillText(`RARE CHANCE: ${Math.round(rareCh * 100)}%`, 560, 380);
 
-        if (player.total.LUCK >= 15) {
+        if (player.baseLUCK >= 15) {
             const legCh = 0.02;
             ctx.fillStyle = COLORS.RARITY_LEGENDARY;
             ctx.fillText(`LEGENDARY CHANCE: ${Math.round(legCh * 100)}%`, 480, 360);
@@ -321,8 +321,11 @@ function drawCombat() {
     uiButtons.forEach(btn => {
         if (btn.state === "combat") {
             const isFightBtn = (btn.label === "FIGHT!" || btn.label === "REGULAR");
+            const isGodStrikeBtn = (btn.label === "GOD STRIKE");
             if (isFightBtn && assets['fight_btn'] && assets['fight_btn'].complete) {
                 ctx.drawImage(assets['fight_btn'], btn.x, btn.y, btn.w, btn.h);
+            } else if (isGodStrikeBtn && assets['god_strike_btn'] && assets['god_strike_btn'].complete) {
+                ctx.drawImage(assets['god_strike_btn'], btn.x, btn.y, btn.w, btn.h);
             } else {
                 drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
             }
@@ -384,7 +387,7 @@ function drawInventory() {
         }
 
         // Special Ability Description
-        if (isMax) {
+        if (baseVal >= 15) {
             ctx.font = "italic 14px Arial"; ctx.fillStyle = COLORS.CYAN;
             ctx.textAlign = "right";
             let desc = "";

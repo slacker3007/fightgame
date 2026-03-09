@@ -61,7 +61,7 @@ function calcStats() {
     player.crit = Math.min(0.50, player.total.LUCK * 0.03);
 
     // Special Abilities
-    if (player.total.DEX >= 15) {
+    if (player.baseDEX >= 15) {
         player.dodge += 0.10;
         player.crit += 0.10;
     }
@@ -138,7 +138,7 @@ async function resolveTurn() {
         spawnText(d + (crit ? "!!" : ""), 750, 250, COLORS.RED);
 
         // STR Special Ability: Spill Damage
-        if (player.total.STR >= 15) {
+        if (player.baseSTR >= 15) {
             const spill = Math.floor(d * 0.10);
             enemy.hp -= spill;
             addLog(`Spill DMG: ${spill}!`, COLORS.RARITY_LEGENDARY);
@@ -160,7 +160,7 @@ async function resolveTurn() {
         } else {
             let d = enemy.dmg;
             // STA Special Ability: Damage Reduction
-            if (player.total.STA >= 15) {
+            if (player.baseSTA >= 15) {
                 const reduced = Math.floor(d * 0.20);
                 d -= reduced;
                 addLog(`Mitigated ${reduced} DMG!`, COLORS.GREEN);
@@ -219,7 +219,7 @@ function craftItem() {
 
     const epicCh = 0.05 + (player.total.LUCK * 0.01);
     const rareCh = 0.15 + (player.total.LUCK * 0.02);
-    const legCh = (player.total.LUCK >= 15) ? 0.02 : 0;
+    const legCh = (player.baseLUCK >= 15) ? 0.02 : 0;
     const roll = Math.random();
 
     let rarity = "COMMON";
