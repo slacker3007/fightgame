@@ -11,6 +11,7 @@ let hoveredItem = null, selectedInvItem = null, tooltipPos = { x: 0, y: 0 };
 let craftedItem = null;
 let craftingAnimTimer = 0;
 let pendingCraftedItem = null;
+let showBattleTip = !localStorage.getItem('battleTipShown');
 
 // Loading State Variables
 let assetsLoaded = 0;

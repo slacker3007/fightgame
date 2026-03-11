@@ -376,6 +376,81 @@ function drawCombat() {
         ctx.font = "18px 'Pirata One'"; ctx.fillStyle = m.col; ctx.textAlign = "center";
         ctx.fillText(m.txt, 480, 535 + i * 20);
     });
+
+    if (showBattleTip) drawBattleTip();
+}
+
+function drawBattleTip() {
+    // Backdrop blur/dim
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillRect(0, 0, 960, 650);
+
+    const w = 600, h = 350;
+    const x = (960 - w) / 2, y = (650 - h) / 2;
+
+    // Outer Glow
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = "rgba(255, 215, 0, 0.3)";
+
+    // Main Panel Gradient
+    const mainGrad = ctx.createLinearGradient(x, y, x, y + h);
+    mainGrad.addColorStop(0, "#1a1a2e");
+    mainGrad.addColorStop(0.5, "#16213e");
+    mainGrad.addColorStop(1, "#0f3460");
+    ctx.fillStyle = mainGrad;
+    ctx.fillRect(x, y, w, h);
+    ctx.shadowBlur = 0;
+
+    // Decorative Border
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x, y, w, h);
+    
+    // Inner Border
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 10, y + 10, w - 20, h - 20);
+
+    // Header with Pirata One
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 42px 'Pirata One'";
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "black";
+    ctx.fillText("BATTLE COMMANDS", 480, y + 65);
+    ctx.shadowBlur = 0;
+
+    // Content
+    ctx.fillStyle = COLORS.CREAM;
+    ctx.font = "18px Ubuntu";
+    ctx.fillText("To survive the gauntlet, you must master your actions:", 480, y + 105);
+    
+    // Mechanics Section
+    const boxY = y + 140;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.fillRect(x + 50, boxY, w - 100, 100);
+    ctx.strokeStyle = "rgba(255, 215, 0, 0.2)";
+    ctx.strokeRect(x + 50, boxY, w - 100, 100);
+
+    ctx.font = "bold 24px Ubuntu";
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.fillText("DEFENSE: SELECT 2 ZONES", 480, boxY + 40);
+    
+    ctx.fillStyle = COLORS.RED;
+    ctx.fillText("ATTACK: SELECT 1 ZONE", 480, boxY + 75);
+
+    // Footer
+    ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.font = "italic 16px Ubuntu";
+    ctx.fillText("Tap anywhere to close and begin the fight", 480, y + 310);
+    
+    // Corner accents
+    ctx.fillStyle = COLORS.GOLD;
+    const s = 15;
+    ctx.fillRect(x - 2, y - 2, s, 4); ctx.fillRect(x - 2, y - 2, 4, s); // TL
+    ctx.fillRect(x + w - s + 2, y - 2, s, 4); ctx.fillRect(x + w - 2, y - 2, 4, s); // TR
+    ctx.fillRect(x - 2, y + h - 2, s, 4); ctx.fillRect(x - 2, y + h - s + 2, 4, s); // BL
+    ctx.fillRect(x + w - s + 2, y + h - 2, s, 4); ctx.fillRect(x + w - 2, y + h - s + 2, 4, s); // BR
 }
 
 function drawInventory() {

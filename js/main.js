@@ -30,6 +30,12 @@ function handleInteraction(e) {
 
     if (inventoryError) inventoryError = false;
 
+    if (showBattleTip && state === "combat") {
+        showBattleTip = false;
+        localStorage.setItem('battleTipShown', 'true');
+        return;
+    }
+
     // Handle button clicks
     const clickedBtn = uiButtons.find(b =>
         state === b.state && mx > b.x && mx < b.x + b.w && my > b.y && my < b.y + b.h
