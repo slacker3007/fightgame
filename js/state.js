@@ -2,6 +2,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 let state = "char_select", userName = "", score = 0, currentLvl = 1, maxLvl = 1;
+let scoreDetails = { hits: 0, crits: 0, blocks: 0, hpBonus: 0, stageClear: 0 };
 let player = {}, enemy = {}, log = [];
 let selAtk = null, selBlk = [], isProcessing = false;
 let pDisplayHp = 0, eDisplayHp = 0, fDisplayFury = 0, shake = 0, particles = [], fxParticles = [];

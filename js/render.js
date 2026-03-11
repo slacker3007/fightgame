@@ -233,6 +233,12 @@ function drawCamp() {
     ctx.font = "bold 20px Ubuntu"; // Ensure font is set for ore text
     ctx.fillText(`ORE: ${player.ore}`, 450, oreY + 28);
     if (assets['ore'] && assets['ore'].complete) ctx.drawImage(assets['ore'], 415, oreY + 7, 25, 25);
+    
+    // Score Display
+    ctx.textAlign = "right";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 20px Ubuntu";
+    ctx.fillText(`SCORE: ${score}`, 940, 30);
 
     const iconMap = { "CHAMPION": "camp_champion", "FORGE": "camp_craft", "BATTLE": "camp_battle" };
     uiButtons.forEach(btn => {
@@ -319,6 +325,12 @@ function drawCombat() {
     drawSprite(`enemy_${currentLvl}`, 590, 130, 350, 350, enemy.name);
     drawHealthBar(40, 70, 300, pDisplayHp, player.maxHp, userName, true);
     drawHealthBar(620, 70, 300, eDisplayHp, enemy.maxHp, enemy.name, false);
+
+    // Score Display
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 20px Ubuntu";
+    ctx.fillText(`SCORE: ${score}`, 480, 30);
 
     // Fury Bar
     fDisplayFury += (player.fury - fDisplayFury) * 0.1;
@@ -507,10 +519,53 @@ function drawEnd() {
     ctx.textAlign = "center";
     const isVictory = state === "victory";
     ctx.fillStyle = isVictory ? COLORS.GOLD : COLORS.RED;
-    ctx.font = "bold 60px Ubuntu"; ctx.fillText(isVictory ? "VICTORY" : "DEFEATED", 480, 100);
+    ctx.font = "bold 60px Ubuntu"; ctx.fillText(isVictory ? "VICTORY" : "DEFEATED", 480, 80);
+    
+    // Detailed Score Breakdown
+    ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.fillRect(280, 110, 400, 220);
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(280, 110, 400, 220);
+    
+    ctx.textAlign = "left";
+    ctx.font = "bold 18px Ubuntu";
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.fillText("SCORE BREAKDOWN", 300, 140);
+    
+    ctx.font = "16px Ubuntu";
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.fillText(`Stages Cleared:`, 300, 175);
+    ctx.textAlign = "right";
+    ctx.fillText(`${scoreDetails.stageClear}`, 660, 175);
+    
+    ctx.textAlign = "left";
+    ctx.fillText(`Combat (Hits/Crits/Blocks):`, 300, 205);
+    ctx.textAlign = "right";
+    const combatScore = (scoreDetails.hits * 20) + (scoreDetails.crits * 30) + (scoreDetails.blocks * 30); // Crits already counted as hits
+    ctx.fillText(`${combatScore}`, 660, 205);
+    
+    ctx.textAlign = "left";
+    ctx.fillText(`Health Retention Bonus:`, 300, 235);
+    ctx.textAlign = "right";
+    ctx.fillText(`${scoreDetails.hpBonus}`, 660, 235);
+    
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    ctx.beginPath(); ctx.moveTo(300, 255); ctx.lineTo(660, 255); ctx.stroke();
+    
+    ctx.textAlign = "left";
+    ctx.font = "bold 22px Ubuntu";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.fillText(`TOTAL SCORE:`, 300, 290);
+    ctx.textAlign = "right";
+    ctx.fillText(`${score}`, 660, 290);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 20px Ubuntu";
+    ctx.fillText("HIGH SCORES", 480, 370);
     highScores.slice(0, 5).forEach((s, i) => {
         ctx.fillStyle = COLORS.WHITE; ctx.font = "18px Ubuntu";
-        ctx.fillText(`${i + 1}. ${s.name}: ${s.score}`, 480, 200 + i * 30);
+        ctx.fillText(`${i + 1}. ${s.name}: ${s.score}`, 480, 405 + i * 30);
     });
     uiButtons.forEach(btn => btn.state === state && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 }

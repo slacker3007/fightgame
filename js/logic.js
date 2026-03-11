@@ -38,6 +38,7 @@ function initPlayer(charType) {
     pDisplayHp = player.hp;
     log = [];
     inventoryError = false;
+    scoreDetails = { hits: 0, crits: 0, blocks: 0, hpBonus: 0, stageClear: 0 };
     addLog(`Welcome, ${charType} Champion.`, COLORS.TARNISHED_GOLD);
 }
 
@@ -143,6 +144,14 @@ async function resolveTurn() {
         shake = crit ? 20 : 10;
         addLog(`You hit for ${d}!`, COLORS.BLOOD_RED);
         spawnText(d + (crit ? "!!" : ""), 750, 250, COLORS.RED);
+        
+        scoreDetails.hits++;
+        if (crit) {
+            scoreDetails.crits++;
+            score += 50;
+        } else {
+            score += 20;
+        }
 
         // STR Special Ability: Spill Damage
         if (player.baseSTR >= 15) {
@@ -165,6 +174,8 @@ async function resolveTurn() {
             spawnText("BLOCK", 180, 300, COLORS.CYAN);
             shake = 2;
             player.fury = Math.min(player.maxFury, player.fury + 10);
+            scoreDetails.blocks++;
+            score += 30;
         } else {
             let d = enemy.dmg;
             // STA Special Ability: Damage Reduction
@@ -190,7 +201,12 @@ async function resolveTurn() {
 
 function checkEnd() {
     if (enemy.hp <= 0) {
-        score += (currentLvl * 100);
+        const stagePoints = (currentLvl * 100);
+        const hpBonus = Math.floor((player.hp / player.maxHp) * 50);
+        score += stagePoints + hpBonus;
+        scoreDetails.stageClear += stagePoints;
+        scoreDetails.hpBonus += hpBonus;
+
         if (currentLvl === 10) {
             saveScore();
             changeState("victory");

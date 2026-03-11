@@ -5,17 +5,32 @@ function createButton(x, y, w, h, stateReq, label, color, action) {
     uiButtons.push({ x, y, w, h, state: stateReq, label, color, action });
 }
 
-canvas.addEventListener('mousedown', e => {
-    if (!isLoaded) return; // Ignore clicks while loading
+const mobileInput = document.getElementById('mobileInput');
+
+function getMousePos(e) {
+    const r = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+        x: (clientX - r.left) * (960 / r.width),
+        y: (clientY - r.top) * (650 / r.height)
+    };
+}
+
+function handleInteraction(e) {
+    if (!isLoaded) return;
+    if (e.type === 'touchstart') e.preventDefault(); // Prevent double-triggering and zoom
+
     AudioEngine.init();
     AudioEngine.startAmbience();
 
-    const r = canvas.getBoundingClientRect();
-    const mx = (e.clientX - r.left) * (960 / r.width);
-    const my = (e.clientY - r.top) * (650 / r.height);
+    const pos = getMousePos(e);
+    const mx = pos.x;
+    const my = pos.y;
 
     if (inventoryError) inventoryError = false;
 
+    // Handle button clicks
     const clickedBtn = uiButtons.find(b =>
         state === b.state && mx > b.x && mx < b.x + b.w && my > b.y && my < b.y + b.h
     );
@@ -25,11 +40,10 @@ canvas.addEventListener('mousedown', e => {
         return;
     }
 
-    if (state === "char_select") {
-        // Handled by uiButtons
-    }
-    else if (state === "name_menu") {
-        // Handled by uiButtons (Start Game / Back)
+    if (state === "name_menu") {
+        // Focus hidden input when clicking anywhere (or specific area) on name menu
+        mobileInput.value = userName;
+        mobileInput.focus();
     }
     else if (state === "inventory") {
         handleInventoryClick(mx, my);
@@ -37,7 +51,10 @@ canvas.addEventListener('mousedown', e => {
     else if (state === "combat" && !isProcessing) {
         handleCombatClick(mx, my);
     }
-});
+}
+
+canvas.addEventListener('mousedown', handleInteraction);
+canvas.addEventListener('touchstart', handleInteraction, { passive: false });
 
 function startGame() {
     AudioEngine.startAmbience();
@@ -194,14 +211,35 @@ function updateUIButtons() {
     }
 }
 
+// Update hidden input when userName changes (e.g. from physical keyboard)
+// and update userName when hidden input changes (e.g. from mobile keyboard)
+mobileInput.addEventListener('input', () => {
+    if (state === "name_menu") {
+        userName = mobileInput.value.slice(0, 12);
+    }
+});
+
 window.addEventListener('keydown', e => {
     if (state === "name_menu") {
-        AudioEngine.init(); // Initialize audio context on first keyboard interaction too
+        AudioEngine.init();
         if (e.key === "Enter" && userName.length > 0) {
             startGame();
+            mobileInput.blur(); // Hide keyboard
+            return;
         }
-        else if (e.key === "Backspace") userName = userName.slice(0, -1);
-        else if (userName.length < 12 && e.key.length === 1) userName += e.key;
+        
+        // If the mobile input is focused, let it handle the character entry to avoid duplication.
+        // The 'input' event listener above will sync it to userName.
+        if (document.activeElement === mobileInput) return;
+
+        if (e.key === "Backspace") {
+            userName = userName.slice(0, -1);
+            mobileInput.value = userName;
+        }
+        else if (userName.length < 12 && e.key.length === 1) {
+            userName += e.key;
+            mobileInput.value = userName;
+        }
     }
 });
 

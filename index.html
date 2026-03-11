@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Gauntlet Arena</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,17 +16,41 @@
             justify-content: center; 
             align-items: center; 
             height: 100vh; 
+            width: 100vw;
             font-family: 'Ubuntu', sans-serif; 
             overflow: hidden; 
+            touch-action: none; /* Prevent browser gestures */
         }
         /* Container to stack Video and Canvas */
         #game-container {
             position: relative;
             width: 960px;
+            max-width: 100vw;
             height: 650px;
+            max-height: calc(100vw * (650 / 960));
             border: 4px solid #464664;
             box-shadow: 0 0 50px rgba(0,0,0,1);
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            aspect-ratio: 960 / 650;
         }
+
+        /* Adjust sizing for portrait screens to keep it centered and scaled */
+        @media (max-aspect-ratio: 960/650) {
+            #game-container {
+                width: 100vw;
+                height: calc(100vw * (650 / 960));
+            }
+        }
+        @media (min-aspect-ratio: 960/650) {
+            #game-container {
+                height: 100vh;
+                width: calc(100vh * (960 / 650));
+            }
+        }
+
         /* Image stays at the bottom */
         #bgImageLayer {
             position: absolute;
@@ -41,9 +66,18 @@
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%; /* Responsive width */
+            height: 100%; /* Responsive height */
             z-index: 2;
             background-color: transparent; /* Vital for seeing the video */
             cursor: crosshair;
+        }
+        /* Hidden input for mobile keyboard support */
+        #mobileInput {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            opacity: 0;
         }
     </style>
 </head>
@@ -51,6 +85,7 @@
     <div id="game-container">
         <img id="bgImageLayer" src="assets/Background_001.png" alt="Background">
         <canvas id="gameCanvas" width="960" height="650"></canvas>
+        <input type="text" id="mobileInput" autocomplete="off" spellcheck="false">
     </div>
 
     <script src="js/data.js"></script>
