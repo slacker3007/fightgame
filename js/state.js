@@ -12,6 +12,7 @@ let craftedItem = null;
 let craftingAnimTimer = 0;
 let pendingCraftedItem = null;
 let showBattleTip = !localStorage.getItem('battleTipShown');
+let isFetchingScores = false;
 
 // Loading State Variables
 let assetsLoaded = 0;

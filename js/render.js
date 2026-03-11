@@ -636,12 +636,48 @@ function drawEnd() {
     ctx.fillText(`${score}`, 660, 290);
 
     ctx.textAlign = "center";
-    ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 20px Ubuntu";
-    ctx.fillText("HIGH SCORES", 480, 370);
-    highScores.slice(0, 5).forEach((s, i) => {
-        ctx.fillStyle = COLORS.WHITE; ctx.font = "18px Ubuntu";
-        ctx.fillText(`${i + 1}. ${s.name}: ${s.score}`, 480, 405 + i * 30);
-    });
+    ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 24px 'Pirata One'";
+    ctx.fillText("GLOBAL LEADERBOARD", 480, 365);
+    
+    if (isFetchingScores && highScores.length === 0) {
+        ctx.fillStyle = COLORS.CYAN; ctx.font = "italic 18px Ubuntu";
+        ctx.fillText("Synchronizing with scrolls...", 480, 420);
+    } else {
+        highScores.slice(0, 5).forEach((s, i) => {
+            const y = 400 + i * 35;
+            
+            // Draw background bar for each entry
+            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.fillRect(330, y - 25, 300, 30);
+            
+            // Rank Number / Symbol
+            let rankCol = COLORS.WHITE;
+            if (i === 0) rankCol = COLORS.GOLD;
+            else if (i === 1) rankCol = "#C0C0C0"; // Silver
+            else if (i === 2) rankCol = "#CD7F32"; // Bronze
+            
+            ctx.fillStyle = rankCol;
+            ctx.font = "bold 18px Ubuntu";
+            ctx.textAlign = "right";
+            ctx.fillText(`${i + 1}.`, 360, y - 5);
+            
+            // Name
+            ctx.textAlign = "left";
+            ctx.fillStyle = COLORS.CREAM;
+            ctx.fillText(s.name.toUpperCase(), 375, y - 5);
+            
+            // Score
+            ctx.textAlign = "right";
+            ctx.fillStyle = rankCol;
+            ctx.fillText(s.score.toLocaleString(), 620, y - 5);
+        });
+        
+        if (isFetchingScores) {
+            ctx.fillStyle = COLORS.CYAN; ctx.font = "12px Ubuntu";
+            ctx.textAlign = "center";
+            ctx.fillText("Updating...", 480, 580);
+        }
+    }
     uiButtons.forEach(btn => btn.state === state && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 }
 

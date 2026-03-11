@@ -1,4 +1,5 @@
 const INV_LIMIT = 20;
+const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbxPyKw_jf7WT8zP9RvlZaCTp2O3FdfdxCRDvJ6iuJP3bHBPPLgEC15mPVfL3YsFM0wB/exec";
 let inventoryError = false;
 
 function getMaxStat(charType, statName) {
@@ -144,7 +145,7 @@ async function resolveTurn() {
         shake = crit ? 20 : 10;
         addLog(`You hit for ${d}!`, COLORS.BLOOD_RED);
         spawnText(d + (crit ? "!!" : ""), 750, 250, COLORS.RED);
-        
+
         scoreDetails.hits++;
         if (crit) {
             scoreDetails.crits++;
@@ -295,8 +296,58 @@ function salvageItem(item) {
 function addLog(txt, col) { log.push({ txt, col }); if (log.length > 50) log.shift(); }
 function spawnText(txt, x, y, col) { particles.push({ txt, x, y, col, life: 1.0, vy: -2 }); }
 
-function saveScore() {
-    highScores.push({ name: userName || "Hero", score: score });
+
+// Initial fetch on load
+fetchScoresFromSheets();
+
+async function saveScore() {
+    const entry = { name: userName || "Hero", score: score };
+
+    // Save locally first
+    highScores.push(entry);
     highScores.sort((a, b) => b.score - a.score);
-    localStorage.setItem('gauntletScores', JSON.stringify(highScores.slice(0, 5)));
+    highScores = highScores.slice(0, 5);
+    localStorage.setItem('gauntletScores', JSON.stringify(highScores));
+
+    // Try to save globally
+    if (LEADERBOARD_URL) {
+        await sendScoreToSheets(entry.name, entry.score);
+        await fetchScoresFromSheets();
+    }
+}
+
+async function sendScoreToSheets(name, score) {
+    console.log(`Attempting to send score for ${name}: ${score}...`);
+    try {
+        // We use text/plain to ensure it's a "simple" request that avoids CORS preflight.
+        // Google Apps Script can still read the JSON string from e.postData.contents.
+        const response = await fetch(LEADERBOARD_URL, {
+            method: 'POST',
+            mode: 'no-cors', // Essential for Google Apps Script to avoid preflight
+            cache: 'no-cache',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ name, score })
+        });
+        console.log("Score submission sent (waiting for sheet to process).");
+    } catch (err) {
+        console.error("Critical error sending score:", err);
+    }
+}
+
+async function fetchScoresFromSheets() {
+    if (!LEADERBOARD_URL || isFetchingScores) return;
+    isFetchingScores = true;
+    try {
+        const response = await fetch(LEADERBOARD_URL);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        if (Array.isArray(data)) {
+            highScores = data;
+            localStorage.setItem('gauntletScores', JSON.stringify(highScores));
+        }
+    } catch (err) {
+        console.warn("Global scores unavailable, using local fallback.", err);
+    } finally {
+        isFetchingScores = false;
+    }
 }
