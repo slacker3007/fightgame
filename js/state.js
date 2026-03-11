@@ -54,6 +54,11 @@ loadAsset('craft_btn', 'assets/craft_button.png');
 loadAsset('champion_bg', 'assets/Champion_window_background.png');
 loadAsset('camp_bg', 'assets/main_camp_background.png');
 loadAsset('god_strike_btn', 'assets/god_strike_button.png');
+loadAsset('stat_icon_str', 'assets/stat_icon_str.png');
+loadAsset('stat_icon_dex', 'assets/stat_icon_dex.png');
+loadAsset('stat_icon_sta', 'assets/stat_icon_sta.png');
+loadAsset('stat_icon_luck', 'assets/stat_icon_luck.png');
+loadAsset('back_to_camp_btn', 'assets/back_to_camp.png');
 
 let selectedChar = null;
 
@@ -65,6 +70,4 @@ for (let i = 1; i <= 10; i++) {
 Object.keys(ZONE_NAMES).forEach(id => loadAsset(`icon_${id}`, `assets/${ZONE_NAMES[id].toLowerCase()}.png`));
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
-let levelUpTimer = 0;
-const bgVideo = document.getElementById('bgVideoLayer');
-bgVideo.play().catch(e => console.log("Waiting for user interaction to play video."));
+let levelUpTimer = 0;

@@ -1,64 +1,45 @@
-
-import numpy as np
 from PIL import Image
-import os
-import shutil
+import numpy as np
 
-def chromakey_with_spill_suppression(image_path, output_path, green_threshold=1.5, spill_threshold=1.1):
-    """
-    Applies chromakey and spill suppression to an image.
-    """
-    img = Image.open(image_path).convert('RGBA')
-    data = np.array(img, dtype=np.float32)
+def chromakey_spillsuppress(filepath):
+    img = Image.open(filepath).convert('RGBA')
+    arr = np.array(img).astype(np.float32)
     
-    r, g, b, a = data[:,:,0], data[:,:,1], data[:,:,2], data[:,:,3]
+    r, g, b, a = arr[:,:,0], arr[:,:,1], arr[:,:,2], arr[:,:,3]
     
-    # 1. Identify Background (Chromakey)
-    # Background is where Green is significantly stronger than Red and Blue
-    is_bg = (g > r * green_threshold) & (g > b * green_threshold)
+    # Calculate chroma key alpha
+    max_rb = np.maximum(r, b)
     
-    # 2. Spill Suppression
-    # Reduce Green where it's dominant but not quite the background
-    # Usually we cap Green to the average or max of Red and Blue
-    is_spill = (g > r * spill_threshold) & (g > b * spill_threshold) & (~is_bg)
+    # difference between green and max of red/blue
+    dg = g - max_rb
     
-    # Simple spill suppression: cap green to the average of red and blue
-    g[is_spill] = (r[is_spill] + b[is_spill]) / 2.0
+    # Soft keying parameters
+    low = 10
+    high = 60
     
-    # 3. Apply Transparency to Background
-    a[is_bg] = 0
+    # mask: 1.0 means transparent green background, 0.0 means opaque foreground
+    mask = np.clip((dg - low) / (high - low), 0.0, 1.0)
     
-    # Reassemble and save
-    new_data = np.stack([r, g, b, a], axis=2).astype(np.uint8)
-    new_img = Image.fromarray(new_data, 'RGBA')
-    new_img.save(output_path)
+    new_a = a * (1.0 - mask)
+    
+    # Spill suppression
+    new_g = np.where(g > max_rb, max_rb, g)
+    
+    arr[:,:,1] = new_g
+    arr[:,:,3] = new_a
+    
+    arr = np.clip(arr, 0, 255).astype(np.uint8)
+    Image.fromarray(arr).save(filepath)
+    print(f"Processed {filepath}")
 
-def process_assets():
-    assets_dir = r'c:\Users\Mooncake\Documents\GitHub\fightgame\assets'
-    backup_dir = os.path.join(assets_dir, 'backups')
-    
-    green_assets = [
-        "camp_icon_battle.png", "camp_icon_champion.png", "camp_icon_craft.png",
-        "craft_button.png", "dragon_scale.png", "dragon_tooth.png",
-        "fight_button.png", "heavy_mace.png", "ninja_suit.png",
-        "reinforced_garb.png", "rusty_dagger.png", "soldier's_sword.png",
-        "void_reaver.png"
-    ]
-    
-    if not os.path.exists(backup_dir):
-        os.makedirs(backup_dir)
-        
-    for filename in green_assets:
-        filepath = os.path.join(assets_dir, filename)
-        if os.path.exists(filepath):
-            print(f"Processing {filename}...")
-            # Backup
-            shutil.copy2(filepath, os.path.join(backup_dir, filename))
-            # Chromakey
-            chromakey_with_spill_suppression(filepath, filepath)
-            print(f"Finished {filename}")
-        else:
-            print(f"Warning: {filename} not found.")
+files = [
+    r"c:\Users\Mooncake\Documents\GitHub\fightgame\assets\leather_tunic.png",
+    r"c:\Users\Mooncake\Documents\GitHub\fightgame\assets\plate_mail.png",
+    r"c:\Users\Mooncake\Documents\GitHub\fightgame\assets\ore.png"
+]
 
-if __name__ == "__main__":
-    process_assets()
+for f in files:
+    try:
+        chromakey_spillsuppress(f)
+    except Exception as e:
+        print(f"Error processing {f}: {e}")

@@ -7,6 +7,8 @@ function createButton(x, y, w, h, stateReq, label, color, action) {
 
 canvas.addEventListener('mousedown', e => {
     if (!isLoaded) return; // Ignore clicks while loading
+    AudioEngine.init();
+    AudioEngine.startAmbience();
 
     const r = canvas.getBoundingClientRect();
     const mx = (e.clientX - r.left) * (960 / r.width);
@@ -18,6 +20,7 @@ canvas.addEventListener('mousedown', e => {
         state === b.state && mx > b.x && mx < b.x + b.w && my > b.y && my < b.y + b.h
     );
     if (clickedBtn) {
+        AudioEngine.playClick();
         clickedBtn.action();
         return;
     }
@@ -37,6 +40,7 @@ canvas.addEventListener('mousedown', e => {
 });
 
 function startGame() {
+    AudioEngine.startAmbience();
     initPlayer(selectedChar);
     currentLvl = 1;
     startLevel(1);
@@ -65,9 +69,10 @@ function handleInventoryClick(mx, my) {
     });
 
     ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
-        const buttonY = 315 + i * 40 - 20;
+        const rowY = 300 + i * 55;
+        const btnX = centerLine + 205, btnY = rowY + 7;
         const maxVal = player.maxStats[s];
-        if (player.points > 0 && player["base" + s] < maxVal && mx > centerLine + 220 && mx < centerLine + 246 && my > buttonY && my < buttonY + 26) {
+        if (player.points > 0 && player["base" + s] < maxVal && mx > btnX && mx < btnX + 30 && my > btnY && my < btnY + 30) {
             player["base" + s]++;
             player.points--;
             calcStats();
@@ -125,7 +130,7 @@ function updateUIButtons() {
         }
     }
     if (state === "inventory") {
-        createButton(405, 540, 150, 40, "inventory", "BACK TO CAMP", COLORS.GRAY, () => {
+        createButton(367, 530, 225, 60, "inventory", "BACK TO CAMP", COLORS.GRAY, () => {
             changeState("camp");
             selectedInvItem = null;
             salvageConfirm = null;
@@ -191,6 +196,7 @@ function updateUIButtons() {
 
 window.addEventListener('keydown', e => {
     if (state === "name_menu") {
+        AudioEngine.init(); // Initialize audio context on first keyboard interaction too
         if (e.key === "Enter" && userName.length > 0) {
             startGame();
         }
@@ -201,6 +207,7 @@ window.addEventListener('keydown', e => {
 
 function changeState(s) {
     if (state === s) return;
+    AudioEngine.playTransition();
     isTransitioning = true;
     nextState = s;
     transitionAlpha = 0;

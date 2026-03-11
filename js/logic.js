@@ -38,7 +38,7 @@ function initPlayer(charType) {
     pDisplayHp = player.hp;
     log = [];
     inventoryError = false;
-    addLog(`Welcome, ${charType} Champion.`, COLORS.GOLD);
+    addLog(`Welcome, ${charType} Champion.`, COLORS.TARNISHED_GOLD);
 }
 
 function calcStats() {
@@ -84,7 +84,7 @@ function startLevel(lvl) {
     eDisplayHp = enemy.hp;
     prepareNextEnemyMove();
     changeState("combat");
-    addLog(`Encountered ${enemy.name}!`, COLORS.RED);
+    addLog(`Encountered ${enemy.name}!`, COLORS.BLOOD_RED);
 }
 
 function prepareNextEnemyMove() {
@@ -121,20 +121,27 @@ async function resolveTurn() {
         isHit = true; // God Strike ignores block
         player.isGodStrike = false;
         player.fury = 0;
-        addLog(`GOD STRIKE UNLEASHED!`, COLORS.GOLD);
+        addLog(`GOD STRIKE UNLEASHED!`, COLORS.TARNISHED_GOLD);
         spawnText("GOD STRIKE", 750, 400, COLORS.GOLD);
     }
 
     if (!isHit) {
-        addLog(`Enemy BLOCKED!`, COLORS.YELLOW);
+        AudioEngine.playBlock();
+        addLog(`Enemy BLOCKED!`, COLORS.DIM_GRAY);
         spawnText("BLOCKED", 750, 300, COLORS.YELLOW);
         shake = 4;
     } else {
+        if (useGodStrike) AudioEngine.playGodStrike();
+        else {
+            let crit = (Math.random() < player.crit);
+            if (crit) AudioEngine.playCrit();
+            else AudioEngine.playHit();
+        }
         let crit = (Math.random() < player.crit) || useGodStrike;
         let d = Math.floor(player.dmg * (crit ? 2 : 1) * (selAtk === "1" ? 1.4 : 1));
         enemy.hp -= d;
         shake = crit ? 20 : 10;
-        addLog(`You hit for ${d}!`, COLORS.RED);
+        addLog(`You hit for ${d}!`, COLORS.BLOOD_RED);
         spawnText(d + (crit ? "!!" : ""), 750, 250, COLORS.RED);
 
         // STR Special Ability: Spill Damage
@@ -153,7 +160,8 @@ async function resolveTurn() {
     if (enemy.hp > 0) {
         let eAtk = enemy.nextAtk;
         if (selBlk.includes(eAtk)) {
-            addLog(`Blocked enemy ${ZONE_NAMES[eAtk]} attack!`, COLORS.CYAN);
+            AudioEngine.playBlock();
+            addLog(`Blocked enemy ${ZONE_NAMES[eAtk]} attack!`, COLORS.DIM_GRAY);
             spawnText("BLOCK", 180, 300, COLORS.CYAN);
             shake = 2;
             player.fury = Math.min(player.maxFury, player.fury + 10);
@@ -166,8 +174,9 @@ async function resolveTurn() {
                 addLog(`Mitigated ${reduced} DMG!`, COLORS.GREEN);
             }
             player.hp -= d;
+            AudioEngine.playHit();
             shake = 12;
-            addLog(`Enemy hit your ${ZONE_NAMES[eAtk]}!`, COLORS.RED);
+            addLog(`Enemy hit your ${ZONE_NAMES[eAtk]}!`, COLORS.BLOOD_RED);
             spawnText("-" + d, 180, 250, COLORS.RED);
             player.fury = Math.min(player.maxFury, player.fury + 20);
         }
@@ -192,10 +201,12 @@ function checkEnd() {
             player.ore += (currentLvl * 5);
             player.points += 2;
             player.hp = player.maxHp;
+            AudioEngine.playLevelUp();
             levelUpTimer = 120;
             changeState("camp");
         }
     } else if (player.hp <= 0) {
+        AudioEngine.playGameOver();
         saveScore();
         changeState("gameover");
     }
@@ -204,13 +215,13 @@ function checkEnd() {
 function craftItem() {
     if (player.inventory.length >= INV_LIMIT) {
         inventoryError = true;
-        addLog("Inventory Full!", COLORS.RED);
+        addLog("Inventory Full!", COLORS.BLOOD_RED);
         return;
     }
 
     const COST = 10;
     if (player.ore < COST) {
-        addLog(`Need ${COST} Ore!`, COLORS.RED);
+        addLog(`Need ${COST} Ore!`, COLORS.BLOOD_RED);
         spawnText("NEED ORE", 480, 325, COLORS.RED);
         return;
     }
@@ -230,6 +241,7 @@ function craftItem() {
     const possible = ALL_ITEMS.filter(i => i.rarity === rarity);
     const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
     pendingCraftedItem = newItem;
+    AudioEngine.playCast();
     craftingAnimTimer = 60; // 1 second animation
 }
 
@@ -238,12 +250,14 @@ function resolveCrafting(keep) {
 
     if (keep) {
         player.inventory.push(craftedItem);
+        AudioEngine.playLevelUp(); // Triumph sound for keeping
         addLog(`Forged: ${craftedItem.name}!`, COLORS[`RARITY_${craftedItem.rarity}`]);
         spawnText("CRAFTED!", 480, 280, COLORS.GOLD);
     } else {
         const refund = craftedItem.rarity === "EPIC" ? 8 : (craftedItem.rarity === "RARE" ? 5 : 3);
         player.ore += refund;
-        addLog(`Salvaged ${craftedItem.name} for ${refund} Ore.`, COLORS.CYAN);
+        AudioEngine.playBlock(); // Metallic sound for salvage
+        addLog(`Salvaged ${craftedItem.name} for ${refund} Ore.`, COLORS.DIM_GRAY);
         spawnText("SALVAGED", 480, 280, COLORS.CYAN);
     }
     craftedItem = null;
@@ -257,7 +271,7 @@ function salvageItem(item) {
     player.inventory = player.inventory.filter(i => i !== item);
     inventoryError = false;
 
-    addLog(`Salvaged ${item.name} for ${refund} Ore.`, COLORS.CYAN);
+    addLog(`Salvaged ${item.name} for ${refund} Ore.`, COLORS.DIM_GRAY);
     selectedInvItem = null;
     salvageConfirm = null;
 }
