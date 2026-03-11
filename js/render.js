@@ -305,6 +305,8 @@ function drawForge() {
         if (btn.state === "forge") {
             if (btn.label === "CRAFT" && assets['craft_btn'] && assets['craft_btn'].complete) {
                 ctx.drawImage(assets['craft_btn'], btn.x, btn.y, btn.w, btn.h);
+            } else if (btn.label === "BACK TO CAMP" && assets['back_to_camp_btn'] && assets['back_to_camp_btn'].complete) {
+                ctx.drawImage(assets['back_to_camp_btn'], btn.x, btn.y, btn.w, btn.h);
             } else {
                 drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
             }

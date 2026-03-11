@@ -67,7 +67,14 @@ for (let i = 1; i <= 10; i++) {
     loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
     loadAsset(`enemy_icon_${i}`, `assets/enemy_lvl_${i}_icon.png`);
 }
-Object.keys(ZONE_NAMES).forEach(id => loadAsset(`icon_${id}`, `assets/${ZONE_NAMES[id].toLowerCase()}.png`));
+const ZONE_MAPPING = {
+    "1": "assets/hit_zone_head.png",
+    "2": "assets/hit_zone_neck.png",
+    "3": "assets/hit_zone_chest.png",
+    "4": "assets/hit_zone_legs.png",
+    "5": "assets/hit_zone_feet.png"
+};
+Object.keys(ZONE_MAPPING).forEach(id => loadAsset(`icon_${id}`, ZONE_MAPPING[id]));
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
 let levelUpTimer = 0;

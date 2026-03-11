@@ -125,8 +125,8 @@ function updateUIButtons() {
             createButton(300, 500, 160, 50, "forge", "KEEP", COLORS.GREEN, () => resolveCrafting(true));
             createButton(500, 500, 160, 50, "forge", "SALVAGE", COLORS.RED, () => resolveCrafting(false));
         } else {
-            createButton(320, 390, 320, 218, "forge", "CRAFT", "#cc8400", () => craftItem());
-            createButton(20, 590, 120, 40, "forge", "BACK", COLORS.GRAY, () => changeState("camp"));
+            createButton(370, 120, 220, 220, "forge", "CRAFT", "#cc8400", () => craftItem());
+            createButton(350, 530, 225, 60, "forge", "BACK TO CAMP", COLORS.GRAY, () => changeState("camp"));
         }
     }
     if (state === "inventory") {
