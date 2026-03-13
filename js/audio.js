@@ -4,7 +4,7 @@ const AudioEngine = (() => {
     // Define Howler sounds
     // Note: The game expects these files to be present in the assets/audio/ directory.
     const sounds = {
-        ambience: new Howl({ src: ['assets/audio/ambience.mp3'], loop: true, volume: 0.15 }),
+        ambience: new Howl({ src: ['assets/audio/ambience.mp3'], loop: true, volume: 0.5 }),
         click: new Howl({ src: ['assets/audio/click.wav'], volume: 0.3 }),
         transition: new Howl({ src: ['assets/audio/transition.wav'], volume: 0.4 }),
         hit: new Howl({ src: ['assets/audio/hit.wav'], volume: 0.5 }),

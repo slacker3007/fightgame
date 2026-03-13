@@ -245,18 +245,18 @@ function drawCamp() {
     if (assets['ore'] && assets['ore'].complete) ctx.drawImage(assets['ore'], 415, oreY + 7, 25, 25);
     
     // Score Display
-    ctx.textAlign = "right";
+    ctx.textAlign = "center";
     ctx.fillStyle = COLORS.GOLD;
     ctx.font = "bold 20px Ubuntu";
-    ctx.fillText(`SCORE: ${score}`, 940, 30);
+    ctx.fillText(`SCORE: ${score}`, 480, 30);
 
     const iconMap = { "CHAMPION": "camp_champion", "FORGE": "camp_craft", "BATTLE": "camp_battle" };
     uiButtons.forEach(btn => {
         if (btn.state === "camp") {
             const assetKey = iconMap[btn.label];
             if (assets[assetKey] && assets[assetKey].complete) {
-                // Glow if points available
-                if (btn.label === "CHAMPION" && player.points > 0) {
+                // Glow if points available or enough ore for crafting
+                if ((btn.label === "CHAMPION" && player.points > 0) || (btn.label === "FORGE" && player.ore >= 10)) {
                     ctx.shadowBlur = 20;
                     ctx.shadowColor = COLORS.GOLD;
                 }
@@ -327,7 +327,12 @@ function drawForge() {
     uiButtons.forEach(btn => {
         if (btn.state === "forge") {
             if (btn.label === "CRAFT" && assets['craft_btn'] && assets['craft_btn'].complete) {
+                if (player.ore >= 10) {
+                    ctx.shadowBlur = 25;
+                    ctx.shadowColor = COLORS.GOLD;
+                }
                 ctx.drawImage(assets['craft_btn'], btn.x, btn.y, btn.w, btn.h);
+                ctx.shadowBlur = 0;
             } else if (btn.label === "BACK TO CAMP" && assets['back_to_camp_btn'] && assets['back_to_camp_btn'].complete) {
                 ctx.drawImage(assets['back_to_camp_btn'], btn.x, btn.y, btn.w, btn.h);
             } else {
