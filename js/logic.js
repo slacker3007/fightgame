@@ -268,13 +268,11 @@ function resolveCrafting(keep) {
     if (keep) {
         player.inventory.push(craftedItem);
         AudioEngine.playLevelUp(); // Triumph sound for keeping
-        addLog(`Forged: ${craftedItem.name}!`, COLORS[`RARITY_${craftedItem.rarity}`]);
         spawnText("CRAFTED!", 480, 280, COLORS.GOLD);
     } else {
         const refund = craftedItem.rarity === "EPIC" ? 8 : (craftedItem.rarity === "RARE" ? 5 : 3);
         player.ore += refund;
         AudioEngine.playBlock(); // Metallic sound for salvage
-        addLog(`Salvaged ${craftedItem.name} for ${refund} Ore.`, COLORS.DIM_GRAY);
         spawnText("SALVAGED", 480, 280, COLORS.CYAN);
     }
     craftedItem = null;

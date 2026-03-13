@@ -57,6 +57,11 @@ function handleInteraction(e) {
     else if (state === "combat" && !isProcessing) {
         handleCombatClick(mx, my);
     }
+    
+    // Global Mute Toggle (e.g., top right corner)
+    if (mx > 910 && mx < 950 && my > 10 && my < 50) {
+        AudioEngine.toggleMute();
+    }
 }
 
 canvas.addEventListener('mousedown', handleInteraction);
@@ -210,6 +215,7 @@ function updateUIButtons() {
             createButton(410, 240, 140, 140, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
         }
     }
+    
     if (state === "gameover" || state === "victory") {
         createButton(380, 480, 200, 60, state, "NEW JOURNEY", COLORS.BTN_BLUE, () => {
             changeState("char_select"); userName = ""; score = 0; currentLvl = 1; maxLvl = 1;
@@ -338,6 +344,7 @@ function gameLoop() {
         else if (state === "battle_select") drawBattleSelect();
         else if (state === "gameover" || state === "victory") drawEnd();
         drawFxParticles();
+        drawMuteBtn();
 
         particles.forEach((p, i) => {
             ctx.globalAlpha = p.life;

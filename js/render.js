@@ -95,7 +95,12 @@ function drawHealthBar(x, y, w, val, max, name, isPlayer = false) {
     
     if (isPlayer) {
         // Player: 26px, Pirata One, Weathered
-        ctx.font = "26px 'Pirata One'"; 
+        let fontSize = 26;
+        ctx.font = `${fontSize}px 'Pirata One'`;
+        while (ctx.measureText(fullText).width > w && fontSize > 12) {
+            fontSize--;
+            ctx.font = `${fontSize}px 'Pirata One'`;
+        }
         ctx.fillStyle = "#FFF5DC"; // Cream color
         
         // "Weathered" effect applied to the whole string
@@ -112,7 +117,12 @@ function drawHealthBar(x, y, w, val, max, name, isPlayer = false) {
         ctx.shadowOffsetY = 0;
     } else {
         // Enemy: 23px, New Rocker
-        ctx.font = "23px 'New Rocker', 'Ubuntu', sans-serif";
+        let fontSize = 23;
+        ctx.font = `${fontSize}px 'New Rocker', 'Ubuntu', sans-serif`;
+        while (ctx.measureText(fullText).width > w && fontSize > 12) {
+            fontSize--;
+            ctx.font = `${fontSize}px 'New Rocker', 'Ubuntu', sans-serif`;
+        }
         ctx.fillStyle = COLORS.RED;
         ctx.fillText(fullText, x, y - 12);
     }
@@ -245,9 +255,13 @@ function drawCamp() {
         if (btn.state === "camp") {
             const assetKey = iconMap[btn.label];
             if (assets[assetKey] && assets[assetKey].complete) {
-                // Draw icon with a small hover effect-like glow if possible? 
-                // For now just draw the image
+                // Glow if points available
+                if (btn.label === "CHAMPION" && player.points > 0) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = COLORS.GOLD;
+                }
                 ctx.drawImage(assets[assetKey], btn.x, btn.y, btn.w, btn.h);
+                ctx.shadowBlur = 0;
             } else {
                 drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
             }
@@ -284,6 +298,9 @@ function drawForge() {
     } else {
         ctx.textAlign = "center"; ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Ubuntu";
         ctx.fillText(`${player.ore} ORE AVAILABLE`, 480, 410);
+        
+        ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 18px Ubuntu";
+        ctx.fillText("COST: 10 ORE", 480, 440);
 
         // Display Odds
         const epicCh = 0.05 + (player.total.LUCK * 0.01);
@@ -637,18 +654,18 @@ function drawEnd() {
 
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 24px 'Pirata One'";
-    ctx.fillText("GLOBAL LEADERBOARD", 480, 365);
+    ctx.fillText("GLOBAL LEADERBOARD", 480, 355);
     
     if (isFetchingScores && highScores.length === 0) {
         ctx.fillStyle = COLORS.CYAN; ctx.font = "italic 18px Ubuntu";
-        ctx.fillText("Synchronizing with scrolls...", 480, 420);
+        ctx.fillText("Synchronizing with scrolls...", 480, 400);
     } else {
-        highScores.slice(0, 5).forEach((s, i) => {
-            const y = 400 + i * 35;
+        highScores.slice(0, 3).forEach((s, i) => {
+            const y = 385 + i * 32;
             
             // Draw background bar for each entry
             ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-            ctx.fillRect(330, y - 25, 300, 30);
+            ctx.fillRect(330, y - 22, 300, 28);
             
             // Rank Number / Symbol
             let rankCol = COLORS.WHITE;
@@ -675,7 +692,7 @@ function drawEnd() {
         if (isFetchingScores) {
             ctx.fillStyle = COLORS.CYAN; ctx.font = "12px Ubuntu";
             ctx.textAlign = "center";
-            ctx.fillText("Updating...", 480, 580);
+            ctx.fillText("Updating...", 480, 560);
         }
     }
     uiButtons.forEach(btn => btn.state === state && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
@@ -789,4 +806,18 @@ function drawBattleSelect() {
             drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
         }
     });
+}
+
+function drawMuteBtn() {
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(915, 10, 35, 35);
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.strokeRect(915, 10, 35, 35);
+    
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 20px Ubuntu";
+    ctx.textAlign = "center";
+    ctx.fillText(AudioEngine.isMuted() ? "🔇" : "🔊", 932, 35);
+    ctx.restore();
 }

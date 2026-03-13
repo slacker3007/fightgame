@@ -16,11 +16,16 @@ const AudioEngine = (() => {
         gameOver: new Howl({ src: ['assets/audio/gameOver.wav'], volume: 0.6 })
     };
 
+    let isMuted = false;
+    let originalVolumes = {};
+
     function init() {
         if (!initialized) {
-            // Howler automatically handles unlocking the AudioContext on interaction but
-            // this method remains for backward compatibility with existing code API.
             initialized = true;
+            // Store original volumes
+            for (let key in sounds) {
+                originalVolumes[key] = sounds[key].volume();
+            }
         }
     }
 
@@ -31,9 +36,19 @@ const AudioEngine = (() => {
         }
     }
 
+    function toggleMute() {
+        isMuted = !isMuted;
+        for (let key in sounds) {
+            sounds[key].mute(isMuted);
+        }
+        return isMuted;
+    }
+
     return {
         init,
         startAmbience,
+        toggleMute,
+        isMuted: () => isMuted,
         playClick: () => sounds.click.play(),
         playTransition: () => sounds.transition.play(),
         playHit: () => sounds.hit.play(),
