@@ -28,11 +28,74 @@ function drawLoadingScreen() {
 function drawFxParticles() {
     fxParticles.forEach(p => {
         ctx.save();
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
+        const kind = p.kind || "circle";
+        const alpha = Math.min(1, p.life * (kind === "streak" ? 1.5 : 1.15));
+        ctx.globalAlpha = alpha;
+        if (kind === "circle") {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (kind === "blood") {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, p.size * 1.15, p.size * 0.82, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (kind === "spark") {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = p.color;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        } else if (kind === "streak") {
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = p.width || 2;
+            ctx.lineCap = "round";
+            const len = (p.length || 16) * Math.min(1, p.life * 1.4);
+            const ang = Math.atan2(p.vy, p.vx);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x - Math.cos(ang) * len, p.y - Math.sin(ang) * len);
+            ctx.stroke();
+        }
+        ctx.restore();
+    });
+}
+
+function drawCombatFlashOverlays() {
+    combatFlashes.forEach(f => {
+        const rect = f.target === "player" ? COMBAT_PLAYER_SPRITE : COMBAT_ENEMY_SPRITE;
+        const a = Math.min(1, f.life * 1.05);
+        ctx.save();
+        if (f.type === "damage") {
+            ctx.globalAlpha = a * 0.72;
+            ctx.strokeStyle = `rgba(230,40,40,${a})`;
+            ctx.lineWidth = 4 + 6 * f.life;
+            ctx.strokeRect(rect.x - 3, rect.y - 3, rect.w + 6, rect.h + 6);
+        } else if (f.type === "parry") {
+            ctx.globalAlpha = a * 0.68;
+            ctx.strokeStyle = `rgba(120,245,255,${a})`;
+            ctx.lineWidth = 3 + 5 * f.life;
+            ctx.shadowBlur = 18 * f.life;
+            ctx.shadowColor = "#00e8ff";
+            ctx.strokeRect(rect.x - 2, rect.y - 2, rect.w + 4, rect.h + 4);
+            ctx.shadowBlur = 0;
+        } else if (f.type === "enemyBlock") {
+            ctx.globalAlpha = a * 0.58;
+            ctx.strokeStyle = `rgba(255,215,96,${a})`;
+            ctx.lineWidth = 2 + 3 * f.life;
+            ctx.strokeRect(rect.x - 2, rect.y - 2, rect.w + 4, rect.h + 4);
+        } else if (f.type === "godStrike") {
+            ctx.globalAlpha = a * 0.88;
+            ctx.strokeStyle = `rgba(255,252,220,${a})`;
+            ctx.lineWidth = 6 + 8 * f.life;
+            ctx.shadowBlur = 28 * f.life;
+            ctx.shadowColor = COLORS.GOLD;
+            ctx.strokeRect(rect.x - 4, rect.y - 4, rect.w + 8, rect.h + 8);
+            ctx.shadowBlur = 0;
+        }
         ctx.restore();
     });
 }
@@ -65,6 +128,42 @@ function drawStyledBtn(x, y, w, h, txt, baseCol) {
     ctx.shadowColor = "black";
     ctx.fillText(txt || "???", x + w / 2, y + h / 2 + 7);
     ctx.shadowBlur = 0;
+}
+
+/** Autoplay control: vector plate (no bitmap mat) so it sits cleanly on combat art */
+function drawAutoplayPlate(x, y, w, h) {
+    ctx.save();
+    const g = ctx.createLinearGradient(x, y, x, y + h);
+    g.addColorStop(0, "#1a1a2e");
+    g.addColorStop(0.45, "#16213e");
+    g.addColorStop(1, "#0f3460");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 4, y + 4, w - 8, h - 8);
+    const s = Math.min(10, Math.floor(h * 0.35));
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.fillRect(x - 1, y - 1, s, 2); ctx.fillRect(x - 1, y - 1, 2, s);
+    ctx.fillRect(x + w - s + 1, y - 1, s, 2); ctx.fillRect(x + w - 1, y - 1, 2, s);
+    ctx.fillRect(x - 1, y + h - 1, s, 2); ctx.fillRect(x - 1, y + h - s + 1, 2, s);
+    ctx.fillRect(x + w - s + 1, y + h - 1, s, 2); ctx.fillRect(x + w - 1, y + h - s + 1, 2, s);
+    ctx.restore();
+}
+
+/** Scales autoplay PNG uniformly into the button rect; true if the bitmap was drawn */
+function tryDrawAutoplayBitmap(btn) {
+    const img = assets['autoplay_btn'];
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const scale = Math.min(btn.w / iw, btn.h / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = btn.x + (btn.w - dw) / 2, dy = btn.y + (btn.h - dh) / 2;
+    ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
+    return true;
 }
 
 function drawLevelUp() {
@@ -383,8 +482,9 @@ function drawForge() {
 }
 
 function drawCombat() {
-    drawPlayerClassSprite(selectedChar, 20, 130, 350, 350, "HERO");
-    drawSprite(`enemy_${currentLvl}`, 590, 130, 350, 350, enemy.name);
+    drawPlayerClassSprite(selectedChar, COMBAT_PLAYER_SPRITE.x, COMBAT_PLAYER_SPRITE.y, COMBAT_PLAYER_SPRITE.w, COMBAT_PLAYER_SPRITE.h, "HERO");
+    drawSprite(`enemy_${currentLvl}`, COMBAT_ENEMY_SPRITE.x, COMBAT_ENEMY_SPRITE.y, COMBAT_ENEMY_SPRITE.w, COMBAT_ENEMY_SPRITE.h, enemy.name);
+    drawCombatFlashOverlays();
     drawHealthBar(40, 70, 300, pDisplayHp, player.maxHp, userName, true);
     drawHealthBar(620, 70, 300, eDisplayHp, enemy.maxHp, enemy.name, false);
 
@@ -421,10 +521,27 @@ function drawCombat() {
         if (btn.state === "combat") {
             const isFightBtn = (btn.label === "FIGHT!" || btn.label === "REGULAR");
             const isGodStrikeBtn = (btn.label === "GOD STRIKE");
+            const isAutoplayBtn = btn.label.startsWith("AUTO");
             if (isFightBtn && assets['fight_btn'] && assets['fight_btn'].complete) {
                 ctx.drawImage(assets['fight_btn'], btn.x, btn.y, btn.w, btn.h);
             } else if (isGodStrikeBtn && assets['god_strike_btn'] && assets['god_strike_btn'].complete) {
                 ctx.drawImage(assets['god_strike_btn'], btn.x, btn.y, btn.w, btn.h);
+            } else if (isAutoplayBtn) {
+                if (!tryDrawAutoplayBitmap(btn)) {
+                    drawAutoplayPlate(btn.x, btn.y, btn.w, btn.h);
+                }
+                ctx.save();
+                ctx.textAlign = "center";
+                const autoFontPx = Math.max(12, Math.min(20, Math.round(btn.h * 0.14)));
+                ctx.font = `bold ${autoFontPx}px Ubuntu`;
+                const cx = btn.x + btn.w / 2, ty = btn.y + btn.h / 2 + Math.round(autoFontPx * 0.32);
+                ctx.lineWidth = Math.max(2, Math.round(autoFontPx / 6));
+                ctx.strokeStyle = "rgba(0,0,0,0.9)";
+                ctx.lineJoin = "round";
+                ctx.strokeText(btn.label, cx, ty);
+                ctx.fillStyle = btn.color;
+                ctx.fillText(btn.label, cx, ty);
+                ctx.restore();
             } else {
                 drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
             }
@@ -439,7 +556,75 @@ function drawCombat() {
         ctx.fillText(m.txt, 480, 535 + i * 20);
     });
 
+    if (combatVignette > 0.02) {
+        ctx.save();
+        const g = ctx.createRadialGradient(480, 305, 90, 480, 305, 520);
+        g.addColorStop(0, "rgba(30,0,0,0)");
+        g.addColorStop(1, `rgba(85,0,0,${combatVignette * 0.42})`);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, 960, 650);
+        ctx.restore();
+    }
+
     if (showBattleTip) drawBattleTip();
+    else if (showAutoplayTip) drawAutoplayTip();
+}
+
+function drawAutoplayTip() {
+    const L = getAutoplayTipLayout();
+    const { x, y, w, h } = L.panel;
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillRect(0, 0, 960, 650);
+
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = "rgba(255, 215, 0, 0.3)";
+    const mainGrad = ctx.createLinearGradient(x, y, x, y + h);
+    mainGrad.addColorStop(0, "#1a1a2e");
+    mainGrad.addColorStop(0.5, "#16213e");
+    mainGrad.addColorStop(1, "#0f3460");
+    ctx.fillStyle = mainGrad;
+    ctx.fillRect(x, y, w, h);
+    ctx.shadowBlur = 0;
+
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x, y, w, h);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 10, y + 10, w - 20, h - 20);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 42px 'Pirata One'";
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "black";
+    ctx.fillText("AUTOPLAY", 480, y + 58);
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = COLORS.CREAM;
+    ctx.font = "18px Ubuntu";
+    const lines = [
+        "The AUTO button (above FIGHT) cycles speed:",
+        "off (grey) → 1× → 2× → 3× → off. Each click steps once.",
+        "Leave it grey if you want full manual control.",
+        "Picking attack or defense yourself still pauses autoplay."
+    ];
+    let lineY = y + 100;
+    lines.forEach(line => {
+        ctx.fillText(line, 480, lineY);
+        lineY += 26;
+    });
+
+    drawStyledBtn(L.gotIt.x, L.gotIt.y, L.gotIt.w, L.gotIt.h, "Got it", COLORS.BTN_BLUE);
+    drawStyledBtn(L.neverAgain.x, L.neverAgain.y, L.neverAgain.w, L.neverAgain.h, "Don't show this anymore", COLORS.GRAY);
+
+    ctx.fillStyle = COLORS.GOLD;
+    const s = 15;
+    ctx.fillRect(x - 2, y - 2, s, 4); ctx.fillRect(x - 2, y - 2, 4, s);
+    ctx.fillRect(x + w - s + 2, y - 2, s, 4); ctx.fillRect(x + w - 2, y - 2, 4, s);
+    ctx.fillRect(x - 2, y + h - 2, s, 4); ctx.fillRect(x - 2, y + h - s + 2, 4, s);
+    ctx.fillRect(x + w - s + 2, y + h - 2, s, 4); ctx.fillRect(x + w - 2, y + h - s + 2, 4, s);
 }
 
 function drawBattleTip() {

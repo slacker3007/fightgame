@@ -66,7 +66,15 @@ function calcStats() {
     }
 }
 
+function bumpAutoplayCancel() {
+    autoplayCancelGen++;
+}
+
 function startLevel(lvl) {
+    bumpAutoplayCancel();
+    combatAutoplayActive = false;
+    combatAutoplayCancelled = false;
+    autoplayKickPending = false;
     currentLvl = lvl;
     const d = ENEMY_DATA[lvl - 1];
     enemy = {
@@ -82,8 +90,64 @@ function startLevel(lvl) {
     pDisplayHp = player.hp;
     eDisplayHp = enemy.hp;
     prepareNextEnemyMove();
+    combatFlashes = [];
+    combatVignette = 0;
     changeState("combat");
+    if (lvl === 2 && !localStorage.getItem(GAUNTLET_AUTOPLAY_TIP_DISMISSED_KEY)) {
+        showAutoplayTip = true;
+    } else {
+        showAutoplayTip = false;
+    }
     addLog(`Encountered ${enemy.name}!`, COLORS.BLOOD_RED);
+}
+
+function autoplaySleep(ms, gen) {
+    return new Promise(resolve => {
+        setTimeout(() => resolve(gen === autoplayCancelGen), ms);
+    });
+}
+
+function shuffleZonesForAutoplay() {
+    const z = ["1", "2", "3", "4", "5"];
+    for (let i = z.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [z[i], z[j]] = [z[j], z[i]];
+    }
+    return z;
+}
+
+async function runCombatAutoplayTurn() {
+    const gen = autoplayCancelGen;
+    const stepMs = AUTOPLAY_BASE_STEP_MS / Math.max(1, Math.min(3, combatAutoplaySpeed));
+
+    const bail = () => state !== "combat" || !combatAutoplayActive || combatAutoplayCancelled || isProcessing;
+
+    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+
+    const zones = shuffleZonesForAutoplay();
+    selBlk = [zones[0]];
+    selAtk = null;
+
+    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    selBlk = [zones[0], zones[1]];
+
+    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    selAtk = (Math.floor(Math.random() * 5) + 1).toString();
+
+    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+
+    if (player.fury >= player.maxFury) {
+        player.isGodStrike = false;
+    }
+
+    if (gen !== autoplayCancelGen || bail()) return;
+    await resolveTurn();
+}
+
+function maybeScheduleCombatAutoplay() {
+    if (state !== "combat" || !combatAutoplayActive || combatAutoplayCancelled || isProcessing) return;
+    if (enemy.hp <= 0 || player.hp <= 0) return;
+    runCombatAutoplayTurn();
 }
 
 function prepareNextEnemyMove() {
@@ -94,6 +158,85 @@ function prepareNextEnemyMove() {
         enemy.nextAtk = r < 0.7 ? ["3", "4", "5"][Math.floor(Math.random() * 3)] : ["1", "2"][Math.floor(Math.random() * 2)];
     } else {
         enemy.nextAtk = Math.floor(Math.random() * 5 + 1).toString();
+    }
+}
+
+function spawnBloodBurst(rect, fromRight) {
+    const originX = rect.x + rect.w * (fromRight ? 0.78 : 0.22);
+    const originY = rect.y + rect.h * (0.36 + Math.random() * 0.22);
+    const count = 14;
+    const baseAngle = fromRight ? Math.PI * (0.55 + Math.random() * 0.35) : Math.PI * (-0.35 + Math.random() * 0.35);
+    const shades = ["#3d0808", "#5c0c0c", "#8a1212", "#b81818", "#e02828"];
+    for (let i = 0; i < count; i++) {
+        const ang = baseAngle + (Math.random() - 0.5) * 0.9;
+        const speed = 2.5 + Math.random() * 6;
+        fxParticles.push({
+            kind: "blood",
+            x: originX + (Math.random() - 0.5) * 24,
+            y: originY + (Math.random() - 0.5) * 24,
+            vx: Math.cos(ang) * speed,
+            vy: Math.sin(ang) * speed,
+            gravity: 0.22,
+            friction: 0.985,
+            life: 0.52 + Math.random() * 0.38,
+            color: shades[Math.floor(Math.random() * shades.length)],
+            size: 2 + Math.random() * 3.5
+        });
+    }
+}
+
+function spawnEnemyBlockSparks() {
+    const r = COMBAT_ENEMY_SPRITE;
+    for (let i = 0; i < 18; i++) {
+        fxParticles.push({
+            kind: "spark",
+            x: r.x + Math.random() * 28,
+            y: r.y + r.h * (0.18 + Math.random() * 0.68),
+            vx: -3.5 - Math.random() * 5.5,
+            vy: (Math.random() - 0.5) * 5.5,
+            friction: 0.93,
+            life: 0.32 + Math.random() * 0.28,
+            color: Math.random() > 0.42 ? "#fff8e8" : "#ffcc44",
+            size: 1.2 + Math.random() * 2.2
+        });
+    }
+}
+
+function spawnPlayerParryStreaks() {
+    const r = COMBAT_PLAYER_SPRITE;
+    for (let i = 0; i < 12; i++) {
+        fxParticles.push({
+            kind: "streak",
+            x: r.x + 12 + Math.random() * 55,
+            y: r.y + r.h * (0.32 + Math.random() * 0.38),
+            vx: -1.2 - Math.random() * 2,
+            vy: -2.8 - Math.random() * 4.5,
+            life: 0.38 + Math.random() * 0.36,
+            color: Math.random() > 0.48 ? "#9efcff" : "#ffffff",
+            length: 14 + Math.random() * 24,
+            width: 1.5 + Math.random() * 2.5
+        });
+    }
+}
+
+function spawnCritBurstOnEnemy(count) {
+    const r = COMBAT_ENEMY_SPRITE;
+    const cx = r.x + r.w * 0.32;
+    const cy = r.y + r.h * 0.4;
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 11;
+        fxParticles.push({
+            kind: "spark",
+            x: cx + (Math.random() - 0.5) * 30,
+            y: cy + (Math.random() - 0.5) * 40,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            friction: 0.96,
+            life: 0.48 + Math.random() * 0.42,
+            color: Math.random() > 0.38 ? COLORS.GOLD : "#ffffff",
+            size: 1.4 + Math.random() * 3.2
+        });
     }
 }
 
@@ -129,6 +272,8 @@ async function resolveTurn() {
         addLog(`Enemy BLOCKED!`, COLORS.DIM_GRAY);
         spawnText("BLOCKED", 750, 300, COLORS.YELLOW);
         shake = 4;
+        spawnEnemyBlockSparks();
+        combatFlashes.push({ target: "enemy", type: "enemyBlock", life: 1 });
     } else {
         const crit = useGodStrike || (Math.random() < player.crit);
         if (useGodStrike) AudioEngine.playGodStrike();
@@ -140,6 +285,15 @@ async function resolveTurn() {
         shake = crit ? 20 : 10;
         addLog(`You hit for ${d}!`, COLORS.BLOOD_RED);
         spawnText(d + (crit ? "!!" : ""), 750, 250, COLORS.RED);
+
+        spawnBloodBurst(COMBAT_ENEMY_SPRITE, false);
+        combatFlashes.push({ target: "enemy", type: "damage", life: 1 });
+        if (useGodStrike) {
+            spawnCritBurstOnEnemy(48);
+            combatFlashes.push({ target: "enemy", type: "godStrike", life: 1 });
+        } else if (crit) {
+            spawnCritBurstOnEnemy(26);
+        }
 
         scoreDetails.hits++;
         if (crit) {
@@ -160,7 +314,10 @@ async function resolveTurn() {
         if (!useGodStrike) player.fury = Math.min(player.maxFury, player.fury + 15);
     }
 
-    await new Promise(r => setTimeout(r, 600));
+    const resolvePauseMs = combatAutoplayActive && !combatAutoplayCancelled
+        ? 600 / Math.max(1, Math.min(3, combatAutoplaySpeed))
+        : 600;
+    await new Promise(r => setTimeout(r, resolvePauseMs));
 
     if (enemy.hp > 0) {
         let eAtk = enemy.nextAtk;
@@ -172,6 +329,8 @@ async function resolveTurn() {
             player.fury = Math.min(player.maxFury, player.fury + 10);
             scoreDetails.blocks++;
             score += 30;
+            spawnPlayerParryStreaks();
+            combatFlashes.push({ target: "player", type: "parry", life: 1 });
         } else {
             let d = enemy.dmg;
             // STA Special Ability: Damage Reduction
@@ -187,6 +346,9 @@ async function resolveTurn() {
             addLog(`Enemy hit your ${ZONE_NAMES[eAtk]}!`, COLORS.BLOOD_RED);
             spawnText("-" + d, 180, 250, COLORS.RED);
             player.fury = Math.min(player.maxFury, player.fury + 20);
+            spawnBloodBurst(COMBAT_PLAYER_SPRITE, true);
+            combatFlashes.push({ target: "player", type: "damage", life: 1 });
+            combatVignette = Math.min(1, combatVignette + 0.55);
         }
     }
     selAtk = null;
@@ -194,10 +356,16 @@ async function resolveTurn() {
     isProcessing = false;
     prepareNextEnemyMove();
     checkEnd();
+    if (state === "combat" && combatAutoplayActive && !combatAutoplayCancelled) {
+        maybeScheduleCombatAutoplay();
+    }
 }
 
 function checkEnd() {
     if (enemy.hp <= 0) {
+        bumpAutoplayCancel();
+        combatAutoplayActive = false;
+        autoplayKickPending = false;
         const stagePoints = (currentLvl * 100);
         const hpBonus = Math.floor((player.hp / player.maxHp) * 50);
         score += stagePoints + hpBonus;
@@ -219,6 +387,9 @@ function checkEnd() {
             changeState("camp");
         }
     } else if (player.hp <= 0) {
+        bumpAutoplayCancel();
+        combatAutoplayActive = false;
+        autoplayKickPending = false;
         AudioEngine.playGameOver();
         saveScore();
         changeState("gameover");

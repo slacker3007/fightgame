@@ -36,6 +36,29 @@ function handleInteraction(e) {
         return;
     }
 
+    if (state === "combat" && showAutoplayTip) {
+        const L = getAutoplayTipLayout();
+        const inRect = (r) => mx > r.x && mx < r.x + r.w && my > r.y && my < r.y + r.h;
+        if (inRect(L.gotIt)) {
+            AudioEngine.playClick();
+            showAutoplayTip = false;
+            return;
+        }
+        if (inRect(L.neverAgain)) {
+            AudioEngine.playClick();
+            showAutoplayTip = false;
+            localStorage.setItem(GAUNTLET_AUTOPLAY_TIP_DISMISSED_KEY, 'true');
+            return;
+        }
+        const p = L.panel;
+        if (mx < p.x || mx > p.x + p.w || my < p.y || my > p.y + p.h) {
+            AudioEngine.playClick();
+            showAutoplayTip = false;
+            return;
+        }
+        return;
+    }
+
     // Handle button clicks
     const clickedBtn = uiButtons.find(b =>
         state === b.state && mx > b.x && mx < b.x + b.w && my > b.y && my < b.y + b.h
@@ -83,6 +106,9 @@ function startGame() {
     AudioEngine.startAmbience();
     initPlayer(selectedChar);
     currentLvl = 1;
+    combatAutoplayActive = false;
+    combatAutoplaySpeed = 1;
+    autoplayKickPending = false;
     startLevel(1);
     if (typeof bgVideo !== 'undefined') bgVideo.play();
 }
@@ -121,6 +147,10 @@ function handleInventoryClick(mx, my) {
 }
 
 function handleCombatClick(mx, my) {
+    if (combatAutoplayActive && !combatAutoplayCancelled) {
+        combatAutoplayCancelled = true;
+        bumpAutoplayCancel();
+    }
     for (let i = 1; i <= 5; i++) {
         const y = 140 + (i - 1) * 65;
         if (mx > 320 && mx < 380 && my > y && my < y + 60) {
@@ -210,27 +240,93 @@ function updateUIButtons() {
             const y = startY + row * 150;
 
             if (i === maxLvl) {
-                const btn = { x, y, w: slotW - 20, h: 120, state: "battle_select", label: "", color: "transparent", action: () => startLevel(i), noDraw: true };
+                const btn = {
+                    x, y, w: slotW - 20, h: 120, state: "battle_select", label: "", color: "transparent",
+                    action: () => startLevel(i),
+                    noDraw: true
+                };
                 uiButtons.push(btn);
             }
         }
     }
+    if (state === "combat" && maxLvl > 1 && !isProcessing) {
+        const autoOn = combatAutoplayActive && !combatAutoplayCancelled;
+        const sp = Math.max(1, Math.min(3, combatAutoplaySpeed));
+        let autoLabel = "AUTO";
+        let autoColor = COLORS.GRAY;
+        if (autoOn) {
+            if (sp === 1) {
+                autoLabel = "AUTO 1x";
+                autoColor = COLORS.GREEN;
+            } else if (sp === 2) {
+                autoLabel = "AUTO 2x";
+                autoColor = COLORS.GOLD;
+            } else {
+                autoLabel = "AUTO 3x";
+                autoColor = COLORS.GOLD;
+            }
+        }
+        const combatCenterX = 410;
+        const autoW = 140;
+        const autoH = 64;
+        const autoGap = 8;
+        const combatActionColumnTopY = 180;
+        const autoY = combatActionColumnTopY - autoGap - autoH;
+        createButton(combatCenterX, autoY, autoW, autoH, "combat", autoLabel, autoColor, () => {
+            if (isProcessing) return;
+            if (!autoOn) {
+                combatAutoplaySpeed = 1;
+                combatAutoplayActive = true;
+                combatAutoplayCancelled = false;
+                bumpAutoplayCancel();
+                autoplayKickPending = true;
+            } else if (sp === 1) {
+                combatAutoplaySpeed = 2;
+            } else if (sp === 2) {
+                combatAutoplaySpeed = 3;
+            } else {
+                combatAutoplayActive = false;
+                combatAutoplayCancelled = true;
+                bumpAutoplayCancel();
+                autoplayKickPending = false;
+            }
+        });
+    }
     if (state === "combat" && !isProcessing && selAtk && selBlk.length === 2) {
+        const cancelAutoplayForManualTurn = () => {
+            combatAutoplayCancelled = true;
+            bumpAutoplayCancel();
+        };
         if (player.fury >= player.maxFury) {
-            // Stacked square buttons for choice
-            createButton(410, 180, 140, 140, "combat", "REGULAR", COLORS.RED, () => resolveTurn());
+            createButton(410, 180, 140, 140, "combat", "REGULAR", COLORS.RED, () => {
+                cancelAutoplayForManualTurn();
+                resolveTurn();
+            });
             createButton(410, 330, 140, 140, "combat", "GOD STRIKE", COLORS.GOLD, () => {
+                cancelAutoplayForManualTurn();
                 player.isGodStrike = true;
                 resolveTurn();
             });
         } else {
-            createButton(410, 240, 140, 140, "combat", "FIGHT!", COLORS.RED, () => resolveTurn());
+            createButton(410, 240, 140, 140, "combat", "FIGHT!", COLORS.RED, () => {
+                cancelAutoplayForManualTurn();
+                resolveTurn();
+            });
         }
     }
     
     if (state === "gameover" || state === "victory") {
         createButton(380, 480, 200, 60, state, "NEW JOURNEY", COLORS.BTN_BLUE, () => {
-            changeState("char_select"); userName = ""; score = 0; currentLvl = 1; maxLvl = 1;
+            changeState("char_select");
+            userName = "";
+            score = 0;
+            currentLvl = 1;
+            maxLvl = 1;
+            combatAutoplayActive = false;
+            combatAutoplaySpeed = 1;
+            combatAutoplayCancelled = false;
+            autoplayKickPending = false;
+            bumpAutoplayCancel();
         });
     }
 }
@@ -339,13 +435,30 @@ function gameLoop() {
             let p = fxParticles[i];
             p.x += p.vx;
             p.y += p.vy;
+            if (p.gravity) p.vy += p.gravity;
+            if (p.friction) {
+                p.vx *= p.friction;
+                p.vy *= p.friction;
+            }
             p.life -= 0.02;
             if (p.life <= 0) fxParticles.splice(i, 1);
         }
 
+        for (let i = combatFlashes.length - 1; i >= 0; i--) {
+            combatFlashes[i].life -= 0.045;
+            if (combatFlashes[i].life <= 0) combatFlashes.splice(i, 1);
+        }
+        combatVignette *= 0.94;
+        if (combatVignette < 0.015) combatVignette = 0;
+
         pDisplayHp += (player.hp - pDisplayHp) * 0.1;
         eDisplayHp += (enemy.hp - eDisplayHp) * 0.1;
         updateUIButtons();
+
+        if (autoplayKickPending && state === "combat" && !isTransitioning && combatAutoplayActive && !combatAutoplayCancelled) {
+            autoplayKickPending = false;
+            runCombatAutoplayTurn();
+        }
 
         if (state === "char_select") drawCharSelect();
         else if (state === "name_menu") drawMenu();

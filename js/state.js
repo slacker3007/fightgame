@@ -6,12 +6,32 @@ let scoreDetails = { hits: 0, crits: 0, blocks: 0, hpBonus: 0, stageClear: 0 };
 let player = {}, enemy = {}, log = [];
 let selAtk = null, selBlk = [], isProcessing = false;
 let pDisplayHp = 0, eDisplayHp = 0, fDisplayFury = 0, shake = 0, particles = [], fxParticles = [];
+/** Sprite rects in combat view — keep in sync with drawCombat positions */
+const COMBAT_PLAYER_SPRITE = { x: 20, y: 130, w: 350, h: 350 };
+const COMBAT_ENEMY_SPRITE = { x: 590, y: 130, w: 350, h: 350 };
+let combatFlashes = [];
+let combatVignette = 0;
 let highScores = JSON.parse(localStorage.getItem('gauntletScores')) || [];
 let hoveredItem = null, selectedInvItem = null, tooltipPos = { x: 0, y: 0 };
 let craftedItem = null;
 let craftingAnimTimer = 0;
 let pendingCraftedItem = null;
 let showBattleTip = !localStorage.getItem('battleTipShown');
+/** Stage-2 autoplay intro; permanent dismiss via localStorage */
+let showAutoplayTip = false;
+const GAUNTLET_AUTOPLAY_TIP_DISMISSED_KEY = 'gauntletAutoplayTipDismissed';
+
+function getAutoplayTipLayout() {
+    const w = 640, h = 400;
+    const x = (960 - w) / 2, y = (650 - h) / 2;
+    const btnY = y + h - 52, btnH = 38;
+    return {
+        panel: { x, y, w, h },
+        gotIt: { x: x + 48, y: btnY, w: 120, h: btnH },
+        neverAgain: { x: x + 188, y: btnY, w: 404, h: btnH }
+    };
+}
+
 let isFetchingScores = false;
 
 // Loading State Variables
@@ -48,6 +68,7 @@ loadAsset('camp_battle', 'assets/camp_icon_battle.png');
 loadAsset('camp_champion', 'assets/camp_icon_champion.png');
 loadAsset('camp_craft', 'assets/camp_icon_craft.png');
 loadAsset('fight_btn', 'assets/fight_button.png');
+loadAsset('autoplay_btn', 'assets/autoplay_button.png');
 loadAsset('craft_btn', 'assets/craft_button.png');
 loadAsset('champion_bg', 'assets/Champion_window_background.png');
 loadAsset('camp_bg', 'assets/main_camp_background.png');
@@ -94,3 +115,11 @@ Object.keys(ZONE_MAPPING).forEach(id => loadAsset(`icon_${id}`, ZONE_MAPPING[id]
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
 let levelUpTimer = 0;
+
+/** Autoplay: toggled in combat (unlocks after first stage clear); speed persists for the run */
+const AUTOPLAY_BASE_STEP_MS = 1000;
+let combatAutoplayActive = false;
+let combatAutoplaySpeed = 1;
+let combatAutoplayCancelled = false;
+let autoplayCancelGen = 0;
+let autoplayKickPending = false;
