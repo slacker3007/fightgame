@@ -145,6 +145,18 @@ function drawSprite(key, x, y, w, h, label, color) {
     }
 }
 
+/** STA uses FBX (WebGL → canvas) when loaded; otherwise `player_STA` PNG. */
+function drawPlayerClassSprite(charClass, x, y, w, h, label, color) {
+    if (charClass === "STA") {
+        if (typeof staFbxDraw === "function" && staFbxModelReady && staFbxDraw(ctx, x, y, w, h)) {
+            return;
+        }
+        drawSprite("player_STA", x, y, w, h, label, color);
+        return;
+    }
+    drawSprite(`player_${charClass}`, x, y, w, h, label, color);
+}
+
 function drawSpriteStrip8(key, x, y, w, h, frameIndex, label, color) {
     const asset = assets[key];
     if (!asset || !(asset.complete || (asset.readyState !== undefined && asset.readyState >= 1)) || asset.naturalWidth < 8) {
@@ -182,7 +194,7 @@ function drawMenu() {
     ctx.fillText("NAME YOUR CHAMPION", 480, 150);
     
     if (selectedChar) {
-        drawSprite(`player_${selectedChar}`, 380, 180, 200, 200, selectedChar);
+        drawPlayerClassSprite(selectedChar, 380, 180, 200, 200, selectedChar);
         ctx.fillStyle = COLORS.CYAN; ctx.font = "bold 24px Ubuntu";
         ctx.fillText(selectedChar + " CLASS", 480, 420);
     }
@@ -231,10 +243,10 @@ function drawCharSelect() {
                 ctx.textAlign = "center";
                 ctx.fillText(`dev STA [ / ] opt ${devStaIdleOptionIndex + 1}/${DEV_STA_IDLE_KEYS.length}`, x + 105, y + 44);
             } else {
-                drawSprite(`player_${c}`, x + 5, y + 50, 200, 200, c);
+                drawPlayerClassSprite(c, x + 5, y + 50, 200, 200, c);
             }
         } else {
-            drawSprite(`player_${c}`, x + 5, y + 50, 200, 200, c);
+            drawPlayerClassSprite(c, x + 5, y + 50, 200, 200, c);
         }
 
         ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Ubuntu";
@@ -379,7 +391,7 @@ function drawForge() {
 }
 
 function drawCombat() {
-    drawSprite(`player_${selectedChar}`, 20, 130, 350, 350, "HERO");
+    drawPlayerClassSprite(selectedChar, 20, 130, 350, 350, "HERO");
     drawSprite(`enemy_${currentLvl}`, 590, 130, 350, 350, enemy.name);
     drawHealthBar(40, 70, 300, pDisplayHp, player.maxHp, userName, true);
     drawHealthBar(620, 70, 300, eDisplayHp, enemy.maxHp, enemy.name, false);
@@ -518,7 +530,7 @@ function drawInventory() {
         ctx.fillStyle = COLORS.PANEL; ctx.fillRect(30, 80, 900, 520);
     }
     ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(30, 80, 900, 520);
-    drawSprite(`player_${selectedChar}`, 40, 120, 400, 400, "CHAMPION");
+    drawPlayerClassSprite(selectedChar, 40, 120, 400, 400, "CHAMPION");
 
 
     const centerLine = 410;
