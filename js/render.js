@@ -145,6 +145,22 @@ function drawSprite(key, x, y, w, h, label, color) {
     }
 }
 
+function drawSpriteStrip8(key, x, y, w, h, frameIndex, label, color) {
+    const asset = assets[key];
+    if (!asset || !(asset.complete || (asset.readyState !== undefined && asset.readyState >= 1)) || asset.naturalWidth < 8) {
+        drawSprite(key, x, y, w, h, label, color);
+        return;
+    }
+    const sw = asset.naturalWidth / 8;
+    const sh = asset.naturalHeight;
+    const fi = ((frameIndex % 8) + 8) % 8;
+    try {
+        ctx.drawImage(asset, fi * sw, 0, sw, sh, x, y, w, h);
+    } catch (e) {
+        drawSprite(key, x, y, w, h, label, color);
+    }
+}
+
 function drawSlot(x, y, label, item, size = 120) {
     ctx.fillStyle = COLORS.SLOT_BG;
     ctx.fillRect(x, y, size, size);
@@ -194,6 +210,8 @@ function drawCharSelect() {
         "High stamina, high health."
     ];
 
+    const idleFrame = Math.floor(Date.now() / 120) % 8;
+
     chars.forEach((c, i) => {
         const x = 50 + i * 225, y = 150, w = 210, h = 400;
         
@@ -203,7 +221,21 @@ function drawCharSelect() {
         ctx.lineWidth = (selectedChar === c) ? 4 : 2;
         ctx.strokeRect(x, y, w, h);
 
-        drawSprite(`player_${c}`, x + 5, y + 50, 200, 200, c);
+        if (devIdleStaEnabled && c === "STA") {
+            const dk = DEV_STA_IDLE_KEYS[devStaIdleOptionIndex % DEV_STA_IDLE_KEYS.length];
+            const devImg = assets[dk];
+            if (devImg && devImg.complete && devImg.naturalWidth >= 8) {
+                drawSpriteStrip8(dk, x + 5, y + 50, 200, 200, idleFrame, c);
+                ctx.fillStyle = COLORS.GRAY;
+                ctx.font = "11px Ubuntu";
+                ctx.textAlign = "center";
+                ctx.fillText(`dev STA [ / ] opt ${devStaIdleOptionIndex + 1}/${DEV_STA_IDLE_KEYS.length}`, x + 105, y + 44);
+            } else {
+                drawSprite(`player_${c}`, x + 5, y + 50, 200, 200, c);
+            }
+        } else {
+            drawSprite(`player_${c}`, x + 5, y + 50, 200, 200, c);
+        }
 
         ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Ubuntu";
         ctx.fillText(labels[i], x + 105, y + 40);
@@ -347,7 +379,7 @@ function drawForge() {
 }
 
 function drawCombat() {
-    drawSprite('player', 20, 130, 350, 350, "HERO");
+    drawSprite(`player_${selectedChar}`, 20, 130, 350, 350, "HERO");
     drawSprite(`enemy_${currentLvl}`, 590, 130, 350, 350, enemy.name);
     drawHealthBar(40, 70, 300, pDisplayHp, player.maxHp, userName, true);
     drawHealthBar(620, 70, 300, eDisplayHp, enemy.maxHp, enemy.name, false);
@@ -486,7 +518,7 @@ function drawInventory() {
         ctx.fillStyle = COLORS.PANEL; ctx.fillRect(30, 80, 900, 520);
     }
     ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(30, 80, 900, 520);
-    drawSprite('player', 40, 120, 400, 400, "CHAMPION");
+    drawSprite(`player_${selectedChar}`, 40, 120, 400, 400, "CHAMPION");
 
 
     const centerLine = 410;

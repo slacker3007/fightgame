@@ -67,6 +67,18 @@ function handleInteraction(e) {
 canvas.addEventListener('mousedown', handleInteraction);
 canvas.addEventListener('touchstart', handleInteraction, { passive: false });
 
+window.addEventListener('keydown', (e) => {
+    if (!devIdleStaEnabled || !isLoaded) return;
+    const n = DEV_STA_IDLE_KEYS.length;
+    if (e.key === '[') {
+        devStaIdleOptionIndex = (devStaIdleOptionIndex - 1 + n) % n;
+        e.preventDefault();
+    } else if (e.key === ']') {
+        devStaIdleOptionIndex = (devStaIdleOptionIndex + 1) % n;
+        e.preventDefault();
+    }
+});
+
 function startGame() {
     AudioEngine.startAmbience();
     initPlayer(selectedChar);

@@ -58,11 +58,30 @@ loadAsset('stat_icon_sta', 'assets/stat_icon_sta.png');
 loadAsset('stat_icon_luck', 'assets/stat_icon_luck.png');
 loadAsset('back_to_camp_btn', 'assets/back_to_camp.png');
 
+loadAsset('player_STR', 'assets/player_STR.png');
+loadAsset('player_DEX', 'assets/player_DEX.png');
+loadAsset('player_STA', 'assets/player_STA.png');
+loadAsset('player_LUCK', 'assets/player_luck.png');
+
+const devIdleStaEnabled = new URLSearchParams(location.search).get('devIdleSta') === '1';
+const DEV_STA_IDLE_FILES = [
+    'assets/dev_idle_sta/option_01_subtle.png',
+    'assets/dev_idle_sta/option_02_weight_shift.png',
+    'assets/dev_idle_sta/option_03_minimal_motion.png'
+];
+const DEV_STA_IDLE_KEYS = ['sta_idle_opt_0', 'sta_idle_opt_1', 'sta_idle_opt_2'];
+let devStaIdleOptionIndex = 0;
+
+if (devIdleStaEnabled) {
+    DEV_STA_IDLE_KEYS.forEach((key, i) => loadAsset(key, DEV_STA_IDLE_FILES[i]));
+}
+
 let selectedChar = null;
 
 
 for (let i = 1; i <= 10; i++) {
     loadAsset(`enemy_icon_${i}`, `assets/enemy_lvl_${i}_icon.png`);
+    loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
 }
 const ZONE_MAPPING = {
     "1": "assets/hit_zone_head.png",
