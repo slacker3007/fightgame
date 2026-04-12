@@ -63,22 +63,6 @@ loadAsset('player_DEX', 'assets/player_DEX.png');
 loadAsset('player_STA', 'assets/player_STA.png');
 loadAsset('player_LUCK', 'assets/player_luck.png');
 
-totalAssets++;
-window.__staFbxSettled = false;
-window.finishStaFbxLoad = function () {
-    if (window.__staFbxSettled) return;
-    window.__staFbxSettled = true;
-    assetsLoaded++;
-    if (assetsLoaded === totalAssets) isLoaded = true;
-};
-setTimeout(() => {
-    if (!window.__staFbxSettled) {
-        console.warn('STA FBX: load timeout, using PNG fallback');
-        window.staFbxLoadFailed = true;
-        window.finishStaFbxLoad();
-    }
-}, 20000);
-
 const devIdleStaEnabled = new URLSearchParams(location.search).get('devIdleSta') === '1';
 const DEV_STA_IDLE_FILES = [
     'assets/dev_idle_sta/option_01_subtle.png',

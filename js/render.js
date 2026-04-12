@@ -145,15 +145,7 @@ function drawSprite(key, x, y, w, h, label, color) {
     }
 }
 
-/** STA uses FBX (WebGL → canvas) when loaded; otherwise `player_STA` PNG. */
 function drawPlayerClassSprite(charClass, x, y, w, h, label, color) {
-    if (charClass === "STA") {
-        if (typeof staFbxDraw === "function" && staFbxModelReady && staFbxDraw(ctx, x, y, w, h)) {
-            return;
-        }
-        drawSprite("player_STA", x, y, w, h, label, color);
-        return;
-    }
     drawSprite(`player_${charClass}`, x, y, w, h, label, color);
 }
 
