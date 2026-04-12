@@ -40,11 +40,6 @@ function loadAsset(key, path) {
 }
 
 // Begin loading sequence
-loadAsset('player_STR', 'assets/player_STR.png');
-loadAsset('player_DEX', 'assets/player_DEX.png');
-loadAsset('player_LUCK', 'assets/player_luck.png');
-loadAsset('player_STA', 'assets/player_STA.png');
-loadAsset('player', 'assets/player.png');
 loadAsset('forge_bg', 'assets/crafting_window.png');
 loadAsset('ore', 'assets/ore.png');
 loadAsset('background', 'assets/Background_001.png');
@@ -67,7 +62,6 @@ let selectedChar = null;
 
 
 for (let i = 1; i <= 10; i++) {
-    loadAsset(`enemy_${i}`, `assets/enemy_lvl_${i}.png`);
     loadAsset(`enemy_icon_${i}`, `assets/enemy_lvl_${i}_icon.png`);
 }
 const ZONE_MAPPING = {
@@ -80,4 +74,4 @@ const ZONE_MAPPING = {
 Object.keys(ZONE_MAPPING).forEach(id => loadAsset(`icon_${id}`, ZONE_MAPPING[id]));
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
-let levelUpTimer = 0;
+let levelUpTimer = 0;

@@ -14,9 +14,6 @@ function initPlayer(charType) {
     if (charType === "LUCK") base.LUCK = 5;
     if (charType === "STA") base.STA = 5;
 
-    // Map the selected character asset to the generic 'player' key used in rendering
-    assets['player'] = assets[`player_${charType}`];
-
     player = {
         baseSTR: base.STR, baseDEX: base.DEX, baseSTA: base.STA, baseLUCK: base.LUCK,
         maxStats: {
@@ -133,13 +130,11 @@ async function resolveTurn() {
         spawnText("BLOCKED", 750, 300, COLORS.YELLOW);
         shake = 4;
     } else {
+        const crit = useGodStrike || (Math.random() < player.crit);
         if (useGodStrike) AudioEngine.playGodStrike();
-        else {
-            let crit = (Math.random() < player.crit);
-            if (crit) AudioEngine.playCrit();
-            else AudioEngine.playHit();
-        }
-        let crit = (Math.random() < player.crit) || useGodStrike;
+        else if (crit) AudioEngine.playCrit();
+        else AudioEngine.playHit();
+
         let d = Math.floor(player.dmg * (crit ? 2 : 1) * (selAtk === "1" ? 1.4 : 1));
         enemy.hp -= d;
         shake = crit ? 20 : 10;
@@ -186,6 +181,7 @@ async function resolveTurn() {
                 addLog(`Mitigated ${reduced} DMG!`, COLORS.GREEN);
             }
             player.hp -= d;
+
             AudioEngine.playHit();
             shake = 12;
             addLog(`Enemy hit your ${ZONE_NAMES[eAtk]}!`, COLORS.BLOOD_RED);

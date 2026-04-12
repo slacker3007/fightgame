@@ -129,8 +129,12 @@ function drawHealthBar(x, y, w, val, max, name, isPlayer = false) {
 }
 
 function drawSprite(key, x, y, w, h, label, color) {
-    if (assets[key] && assets[key].complete) {
-        ctx.drawImage(assets[key], x, y, w, h);
+    const asset = assets[key];
+
+    if (asset && (asset.complete || (asset.readyState !== undefined && asset.readyState >= 1))) {
+        try {
+            ctx.drawImage(asset, x, y, w, h);
+        } catch (e) {}
     } else {
         ctx.fillStyle = color || "#323232";
         ctx.fillRect(x, y, w, h);

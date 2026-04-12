@@ -1,0 +1,86 @@
+[
+  {
+    "id": "player_STR",
+    "role": "player",
+    "output_idle_sheet": "assets/player_STR_idle_sheet.png",
+    "description": "Heavily armored fantasy warrior champion, broad shoulders, two-handed sword, heroic stance, dark fantasy arena fighter, readable silhouette, pixel art style matching indie RPG"
+  },
+  {
+    "id": "player_DEX",
+    "role": "player",
+    "output_idle_sheet": "assets/player_DEX_idle_sheet.png",
+    "description": "Agile rogue champion, dual daggers, leather armor, hood half-down, nimble stance, dark fantasy arena fighter, readable silhouette, pixel art style matching indie RPG"
+  },
+  {
+    "id": "player_LUCK",
+    "role": "player",
+    "output_idle_sheet": "assets/player_luck_idle_sheet.png",
+    "description": "Charismatic gambler champion, ornate coat, lucky charms, confident smirk, playing cards motif subtle, dark fantasy arena fighter, readable silhouette, pixel art style matching indie RPG"
+  },
+  {
+    "id": "player_STA",
+    "role": "player",
+    "output_idle_sheet": "assets/player_STA_idle_sheet.png",
+    "description": "Stalwart defender champion, tower shield, mace, full plate, grounded stance, dark fantasy arena fighter, readable silhouette, pixel art style matching indie RPG"
+  },
+  {
+    "id": "enemy_1",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_1_idle_sheet.png",
+    "description": "Arena grunt goblin, crude spear, level 1 cannon fodder, scrappy but cute-evil, dark fantasy pixel art"
+  },
+  {
+    "id": "enemy_2",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_2_idle_sheet.png",
+    "description": "Bandit raider with mask, short sword, slightly tougher than goblins, dark fantasy pixel art"
+  },
+  {
+    "id": "enemy_3",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_3_idle_sheet.png",
+    "description": "Undead skeleton warrior, chipped blade, hollow eyes, rising threat, dark fantasy pixel art"
+  },
+  {
+    "id": "enemy_4",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_4_idle_sheet.png",
+    "description": "Dark cultist acolyte, staff with faint glow, hooded robes, dark fantasy pixel art"
+  },
+  {
+    "id": "enemy_5",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_5_idle_sheet.png",
+    "description": "Armored knight errant fallen to corruption, one-handed sword and shield, mid-tier boss feel, dark fantasy pixel art"
+  },
+  {
+    "id": "enemy_6",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_6_idle_sheet.png",
+    "description": "Beastman gladiator, claws and shoulder pauldrons, muscular silhouette, dark fantasy pixel art"
+  },
+  {
+    "id": "enemy_7",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_7_idle_sheet.png",
+    "description": "Shadow assassin, twin blades, smoke-like cloak edges, elite speedster enemy, dark fantasy pixel art"
+  },
+  {
+    "id": "enemy_8",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_8_idle_sheet.png",
+    "description": "Stone golem with cracks and runes, heavy fists, magical construct, dark fantasy pixel art"
+  },
+  {
+    "id": "enemy_9",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_9_idle_sheet.png",
+    "description": "Lich apprentice, frost magic wisps, tattered royal robes, high-tier caster, dark fantasy pixel art"
+  },
+  {
+    "id": "enemy_10",
+    "role": "enemy",
+    "output_idle_sheet": "assets/enemy_lvl_10_idle_sheet.png",
+    "description": "Demon champion final gauntlet boss, horns, blazing eyes subtle, massive weapon, apex threat, dark fantasy pixel art"
+  }
+]
