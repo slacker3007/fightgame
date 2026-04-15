@@ -100,7 +100,7 @@ function drawCombatFlashOverlays() {
     });
 }
 
-// ... Keep all your existing draw functions (drawMenu, drawCamp, etc.) below this ...
+// ... Keep all your existing draw functions (drawCamp, etc.) below this ...
 function drawStyledBtn(x, y, w, h, txt, baseCol) {
     // Outer Glow/Border
     ctx.shadowBlur = 10;
@@ -264,7 +264,9 @@ function drawSpriteStrip8(key, x, y, w, h, frameIndex, label, color) {
     }
 }
 
-function drawSlot(x, y, label, item, size = 120) {
+function drawSlot(x, y, label, item, size = 120, slotOpts) {
+    const locked = slotOpts && slotOpts.locked;
+    const reqLevel = slotOpts && typeof slotOpts.reqLevel === "number" ? slotOpts.reqLevel : null;
     ctx.fillStyle = COLORS.SLOT_BG;
     ctx.fillRect(x, y, size, size);
     ctx.strokeStyle = item ? COLORS[`RARITY_${item.rarity}`] : COLORS.GOLD;
@@ -272,30 +274,465 @@ function drawSlot(x, y, label, item, size = 120) {
     ctx.strokeRect(x, y, size, size);
     ctx.lineWidth = 1;
     ctx.fillStyle = COLORS.GRAY; ctx.font = "bold 14px Ubuntu"; ctx.textAlign = "center";
-    ctx.fillText(label, x + size / 2, y + 25);
-    if (item) {
+    ctx.fillText(label, x + size / 2, y + Math.min(22, size * 0.28));
+    if (locked) {
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(x, y, size, size);
+        ctx.fillStyle = COLORS.DIM_GRAY;
+        ctx.font = "bold 11px Ubuntu";
+        if (reqLevel != null) ctx.fillText("Lv " + reqLevel, x + size / 2, y + size * 0.62);
+        ctx.font = "10px Ubuntu";
+        ctx.fillText("LOCKED", x + size / 2, y + size * 0.78);
+    } else if (item) {
         const imgSize = size * 0.75, offset = (size - imgSize) / 2;
         drawSprite(item.name, x + offset, y + offset + 5, imgSize, imgSize, item.name.substring(0, 3), COLORS[`RARITY_${item.rarity}`]);
     }
 }
 
-function drawMenu() {
-    ctx.fillStyle = "rgba(0,0,0,0.9)"; ctx.fillRect(0, 0, 960, 650);
-    ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 40px Ubuntu";
-    ctx.fillText("NAME YOUR CHAMPION", 480, 150);
-    
-    if (selectedChar) {
-        drawPlayerClassSprite(selectedChar, 380, 180, 200, 200, selectedChar);
-        ctx.fillStyle = COLORS.CYAN; ctx.font = "bold 24px Ubuntu";
-        ctx.fillText(selectedChar + " CLASS", 480, 420);
+/** Layout for seven accessory gear slots — 4 on first row, 3 centered below (must match handleInventoryClick in main.js). */
+function getInventoryAccountSlotLayout(centerLine) {
+    const slotIds = typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)
+        ? ACCOUNT_EQUIP_SLOT_IDS
+        : [];
+    const slotSize = 50;
+    const gap = 6;
+    const colsTop = 4;
+    const row1y = 235;
+    const rowGap = 8;
+    const topRowWidth = colsTop * slotSize + (colsTop - 1) * gap;
+    return slotIds.map((slotId, i) => {
+        const m = typeof getAccountMilestoneBySlotId === "function" ? getAccountMilestoneBySlotId(slotId) : null;
+        const row = i < colsTop ? 0 : 1;
+        const colInRow = row === 0 ? i : i - colsTop;
+        const colsThisRow = row === 0 ? colsTop : slotIds.length - colsTop;
+        const rowWidth = colsThisRow * slotSize + (colsThisRow - 1) * gap;
+        const xOff = row === 0 ? 0 : (topRowWidth - rowWidth) / 2;
+        const x = centerLine + xOff + colInRow * (slotSize + gap);
+        const y = row === 0 ? row1y : row1y + slotSize + rowGap;
+        return {
+            milestone: m,
+            slotId,
+            slotLabel: (m && m.slotLabel) || String(slotId || "?").toUpperCase(),
+            x,
+            y,
+            w: slotSize,
+            h: slotSize
+        };
+    });
+}
+
+const ACCOUNT_HEADER_OX = 14;
+const ACCOUNT_HEADER_OY = 6;
+
+function getAccountHeaderLayout() {
+    const pw = 56, ph = 56, textW = 240, gap = 8;
+    return {
+        hit: { x: ACCOUNT_HEADER_OX, y: ACCOUNT_HEADER_OY, w: pw + gap + textW, h: ph },
+        ox: ACCOUNT_HEADER_OX,
+        oy: ACCOUNT_HEADER_OY,
+        pw,
+        ph,
+        textW,
+        gap
+    };
+}
+
+function truncateNicknameHeader(ctx, name, maxW) {
+    const n = name || "—";
+    if (ctx.measureText(n).width <= maxW) return n;
+    let s = n;
+    while (s.length > 1 && ctx.measureText(s + "…").width > maxW) s = s.slice(0, -1);
+    return s + "…";
+}
+
+function drawAccountHeaderMini() {
+    const { ox, oy, pw, ph, textW, gap } = getAccountHeaderLayout();
+    const classKey = selectedChar || "STR";
+    tickAccountPortrait(classKey);
+
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ox, oy, pw, ph);
+    ctx.fillStyle = "rgba(35,35,48,0.95)";
+    ctx.fillRect(ox + 1, oy + 1, pw - 2, ph - 2);
+
+    const st = getPortraitStatus();
+    const img = getPortraitDisplayImage();
+    if (st === "ok" && img && img.complete && img.naturalWidth > 0) {
+        const scale = Math.max(pw / img.naturalWidth, ph / img.naturalHeight);
+        const dw = img.naturalWidth * scale;
+        const dh = img.naturalHeight * scale;
+        const dx = ox + (pw - dw) / 2;
+        const dy = oy + (ph - dh) / 2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(ox + 1, oy + 1, pw - 2, ph - 2);
+        ctx.clip();
+        ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.restore();
+    } else {
+        drawPlayerClassSprite(classKey, ox + 4, oy + 4, pw - 8, ph - 8, classKey);
     }
 
-    ctx.fillStyle = COLORS.WHITE; ctx.font = "20px Ubuntu"; ctx.fillText("TYPE NAME & CLICK 'START GAME' TO BEGIN", 480, 460);
-    ctx.fillStyle = "#28283C"; ctx.fillRect(330, 480, 300, 50);
-    ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(330, 480, 300, 50);
-    ctx.fillStyle = COLORS.CYAN; ctx.font = "bold 24px Ubuntu";
-    ctx.fillText(userName + (Math.floor(Date.now() / 500) % 2 == 0 ? "|" : ""), 480, 515);
+    const badgeCx = ox + pw - 8;
+    const badgeCy = oy + 12;
+    const badgeR = 12;
+    ctx.beginPath();
+    ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fill();
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const lv = accountLevel;
+    ctx.font = lv >= 100 ? "bold 9px Ubuntu" : lv >= 10 ? "bold 11px Ubuntu" : "bold 12px Ubuntu";
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.fillText(String(lv), badgeCx, badgeCy);
 
+    const tx = ox + pw + gap;
+    const nickY = oy + 14;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 15px Ubuntu";
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.fillText(truncateNicknameHeader(ctx, getAccountNickname(), textW), tx, nickY);
+
+    const barX = tx;
+    const barY = oy + 22;
+    const barW = textW;
+    const barH = 16;
+    const xpIn = accountXpWithinCurrentLevel(accountXp);
+    const pct = Math.min(100, Math.round((xpIn / ACCOUNT_XP_PER_LEVEL) * 100));
+    ctx.fillStyle = "#0a0a0f";
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.fillRect(barX, barY, barW * (pct / 100), barH);
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barW, barH);
+    ctx.font = "bold 11px Ubuntu";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.fillText(pct + "%", barX + barW / 2, barY + barH / 2);
+}
+
+function drawAccountNickname() {
+    ctx.fillStyle = "rgba(0,0,0,0.9)";
+    ctx.fillRect(0, 0, 960, 650);
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 40px Ubuntu";
+    ctx.fillText("ACCOUNT NAME", 480, 150);
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.font = "20px Ubuntu";
+    ctx.fillText("THIS NAME IS USED IN BATTLE AND ON THE LEADERBOARD", 480, 220);
+    ctx.fillText("TYPE YOUR NICKNAME, THEN CONTINUE", 480, 255);
+    ctx.fillStyle = "#28283C";
+    ctx.fillRect(330, 400, 300, 50);
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.strokeRect(330, 400, 300, 50);
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.font = "bold 24px Ubuntu";
+    ctx.fillText(accountNicknameInput + (Math.floor(Date.now() / 500) % 2 == 0 ? "|" : ""), 480, 435);
+    uiButtons.forEach(btn => btn.state === state && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
+}
+
+function getAccountProfileLayout() {
+    const panel = { x: 28, y: 20, w: 904, h: 530 };
+    const pad = 24;
+    const buttonSafeY = 560;
+    const portrait = { x: panel.x + pad, y: panel.y + 74, w: 160, h: 160 };
+    const text = {
+        x: portrait.x + portrait.w + 20,
+        y: portrait.y + 22,
+        w: panel.x + panel.w - pad - (portrait.x + portrait.w + 20)
+    };
+    const bar = {
+        x: panel.x + pad,
+        w: panel.w - pad * 2,
+        h: 20,
+        xpY: portrait.y + portrait.h + 28,
+        gauntletY: portrait.y + portrait.h + 84
+    };
+    return { panel, pad, buttonSafeY, portrait, text, bar };
+}
+
+function drawAccountProfilePanelFrame(L) {
+    const { x, y, w, h } = L.panel;
+    ctx.fillStyle = "rgba(0,0,0,0.9)";
+    ctx.fillRect(0, 0, 960, 650);
+
+    const g = ctx.createLinearGradient(x, y, x, y + h);
+    g.addColorStop(0, "rgba(22,22,36,0.92)");
+    g.addColorStop(1, "rgba(10,10,18,0.92)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 8, y + 8, w - 16, h - 16);
+}
+
+function drawAccountProfileBar(x, y, w, h, ratio, label, fillColor) {
+    const clamped = Math.max(0, Math.min(1, ratio));
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = COLORS.CREAM;
+    ctx.font = "bold 15px Ubuntu";
+    ctx.fillText(label, x, y - 8);
+
+    ctx.fillStyle = "#0a0a0f";
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = fillColor;
+    ctx.fillRect(x, y, w * clamped, h);
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.font = "bold 12px Ubuntu";
+    ctx.fillText(Math.round(clamped * 100) + "%", x + w / 2, y + h / 2);
+}
+
+/** X position along milestone rail for current accountLevel (partial progress between Lv10,20,…). */
+function getMilestoneRailProgressX(accountLv, centers, mileLevels) {
+    const n = centers.length;
+    if (n === 0) return 0;
+    const L = Math.max(1, Math.floor(accountLv));
+    const c0 = centers[0];
+    if (n === 1) return c0;
+    const cLast = centers[n - 1];
+    const step01 = centers[1] - centers[0];
+    if (L < mileLevels[0]) {
+        return c0 + (L - mileLevels[0]) / mileLevels[0] * step01;
+    }
+    if (L >= mileLevels[n - 1]) {
+        return cLast;
+    }
+    for (let i = 0; i < n - 1; i++) {
+        if (L >= mileLevels[i] && L < mileLevels[i + 1]) {
+            const span = mileLevels[i + 1] - mileLevels[i];
+            const t = span > 0 ? (L - mileLevels[i]) / span : 0;
+            return centers[i] + t * (centers[i + 1] - centers[i]);
+        }
+    }
+    return cLast;
+}
+
+function drawAccountProfile() {
+    const classKey = selectedChar || "STR";
+    tickAccountPortrait(classKey);
+    const L = getAccountProfileLayout();
+    const labels = { STR: "WARRIOR", DEX: "ROGUE", LUCK: "GAMBLER", STA: "DEFENDER" };
+
+    drawAccountProfilePanelFrame(L);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 46px Ubuntu";
+    ctx.fillText("YOUR ACCOUNT", 480, L.panel.y + 56);
+
+    const px = L.portrait.x, py = L.portrait.y, pw = L.portrait.w, ph = L.portrait.h;
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(px, py, pw, ph);
+    ctx.fillStyle = "rgba(32,32,48,0.95)";
+    ctx.fillRect(px + 2, py + 2, pw - 4, ph - 4);
+
+    const st = getPortraitStatus();
+    const img = getPortraitDisplayImage();
+    if (st === "ok" && img && img.complete && img.naturalWidth > 0) {
+        const scale = Math.max(pw / img.naturalWidth, ph / img.naturalHeight);
+        const dw = img.naturalWidth * scale;
+        const dh = img.naturalHeight * scale;
+        const dx = px + (pw - dw) / 2;
+        const dy = py + (ph - dh) / 2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(px + 2, py + 2, pw - 4, ph - 4);
+        ctx.clip();
+        ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.restore();
+    } else if (st === "loading") {
+        ctx.textAlign = "center";
+        ctx.fillStyle = COLORS.CYAN;
+        ctx.font = "bold 15px Ubuntu";
+        ctx.fillText("FORGING PORTRAIT…", px + pw / 2, py + ph / 2 + 4);
+    } else {
+        drawPlayerClassSprite(classKey, px + 18, py + 18, pw - 36, ph - 36, classKey);
+        if (st === "error") {
+            ctx.textAlign = "center";
+            ctx.fillStyle = COLORS.GRAY;
+            ctx.font = "12px Ubuntu";
+            ctx.fillText("(portrait unavailable)", px + pw / 2, py + ph - 10);
+        }
+    }
+
+    const badgeCx = px + pw - 12;
+    const badgeCy = py + 16;
+    const badgeR = 18;
+    ctx.beginPath();
+    ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fill();
+    ctx.strokeStyle = COLORS.GOLD;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = accountLevel >= 100 ? "bold 11px Ubuntu" : "bold 14px Ubuntu";
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.fillText(String(accountLevel), badgeCx, badgeCy);
+
+    const tx = L.text.x;
+    const maxNameW = L.text.w - 6;
+    ctx.font = "bold 40px Ubuntu";
+    const nick = truncateNicknameHeader(ctx, getAccountNickname(), maxNameW);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.font = "bold 40px Ubuntu";
+    ctx.fillText(nick, tx, L.text.y + 4);
+    ctx.fillStyle = COLORS.WHITE;
+    ctx.font = "bold 34px Ubuntu";
+    ctx.fillText((labels[classKey] || classKey) + " · " + classKey + " FOCUS", tx, L.text.y + 40);
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 34px Ubuntu";
+    ctx.fillText("ACCOUNT LV. " + accountLevel + "  ·  total XP " + accountXp, tx, L.text.y + 78);
+
+    const xpInLv = accountXpWithinCurrentLevel(accountXp);
+    drawAccountProfileBar(
+        L.bar.x,
+        L.bar.xpY,
+        L.bar.w,
+        L.bar.h,
+        xpInLv / ACCOUNT_XP_PER_LEVEL,
+        "XP this level: " + Math.floor(xpInLv) + " / " + ACCOUNT_XP_PER_LEVEL,
+        COLORS.GREEN
+    );
+
+    const best = typeof getBestStageBeaten === "function" ? getBestStageBeaten() : 0;
+    drawAccountProfileBar(
+        L.bar.x,
+        L.bar.gauntletY,
+        L.bar.w,
+        L.bar.h,
+        GAUNTLET_TOTAL_STAGES > 0 ? best / GAUNTLET_TOTAL_STAGES : 0,
+        "GAUNTLET — Stages cleared: " + best + " / " + GAUNTLET_TOTAL_STAGES,
+        COLORS.CYAN
+    );
+
+    const milestones = typeof ACCOUNT_LEVEL_MILESTONES !== "undefined" ? ACCOUNT_LEVEL_MILESTONES : [];
+    const trackTop = L.bar.gauntletY + 60;
+    const n = milestones.length;
+    const nodeW = 50;
+    const nodeGap = n > 1 ? Math.max(8, Math.floor((L.bar.w - nodeW * n) / (n - 1))) : 0;
+    const startX = L.bar.x + nodeW / 2;
+    const railY = trackTop + 42;
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = COLORS.GOLD;
+    ctx.font = "bold 34px Ubuntu";
+    ctx.fillText("ACCOUNT LEVEL REWARDS", 480, trackTop - 8);
+
+    const mileLevels = milestones.map(m => m.level);
+    const centers = milestones.map((_, i) => startX + i * (nodeW + nodeGap));
+    if (n > 0) {
+        const c0 = centers[0];
+        const cLast = centers[n - 1];
+        const xProg = getMilestoneRailProgressX(accountLevel, centers, mileLevels);
+        const brightA = Math.min(c0, xProg);
+        const brightB = Math.max(c0, xProg);
+
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(0,200,220,0.22)";
+        ctx.lineWidth = 5;
+        ctx.lineCap = "round";
+        ctx.moveTo(c0, railY);
+        ctx.lineTo(cLast, railY);
+        ctx.stroke();
+
+        if (brightB - brightA > 1) {
+            ctx.beginPath();
+            ctx.strokeStyle = COLORS.CYAN;
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = "rgba(0,255,255,0.25)";
+            ctx.lineCap = "round";
+            ctx.moveTo(brightA, railY);
+            ctx.lineTo(brightB, railY);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    milestones.forEach((m, i) => {
+        const cxn = startX + i * (nodeW + nodeGap);
+        const nx = cxn - nodeW / 2;
+        const ny = trackTop + 6;
+        const claimed = typeof isMilestoneClaimed === "function" && isMilestoneClaimed(m.level);
+        const locked = accountLevel < m.level;
+        const borderCol = m.level >= 100 ? COLORS.RARITY_LEGENDARY : m.level >= 70 ? COLORS.RARITY_EPIC : COLORS.RARITY_RARE;
+
+        ctx.save();
+        if (locked) ctx.globalAlpha = 0.42;
+        ctx.textAlign = "center";
+        ctx.fillStyle = COLORS.GOLD;
+        ctx.font = "bold 18px Ubuntu";
+        ctx.fillText("Lv " + m.level, cxn, ny - 6);
+
+        ctx.fillStyle = "rgba(25,25,40,0.95)";
+        ctx.fillRect(nx, ny, nodeW, nodeW);
+        ctx.strokeStyle = borderCol;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(nx, ny, nodeW, nodeW);
+
+        const oreAmt = typeof m.ore === "number" ? m.ore : 0;
+        if (oreAmt > 0) {
+            const oreImg = assets["ore"];
+            if (oreImg && oreImg.complete) {
+                ctx.drawImage(oreImg, nx + 9, ny + 9, nodeW - 18, nodeW - 18);
+            }
+        } else {
+            ctx.fillStyle = m.rewardType === "passive" ? "rgba(160,120,255,0.28)" : "rgba(0,200,220,0.35)";
+            ctx.fillRect(nx + 12, ny + 18, nodeW - 24, nodeW - 36);
+            ctx.fillStyle = m.rewardType === "passive" ? "#c9a8ff" : COLORS.CYAN;
+            ctx.font = "bold 22px Ubuntu";
+            const ab = (m.slotLabel || (m.label && m.label.charAt(0)) || "?").charAt(0);
+            ctx.fillText(ab, cxn, ny + nodeW / 2 + 8);
+        }
+
+        ctx.fillStyle = "#bde8ff";
+        ctx.font = "bold 12px Ubuntu";
+        const sub = oreAmt > 0 ? "+" + oreAmt : (m.rewardType === "passive" ? "Passive" : (m.label || m.slotLabel || "Slot"));
+        const subOne = sub.length > 14 ? sub.slice(0, 13) + "…" : sub;
+        ctx.fillText(subOne, cxn, ny + nodeW + 16);
+
+        if (claimed) {
+            ctx.strokeStyle = COLORS.CYAN;
+            ctx.lineWidth = 4;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(nx + 10, ny + 27);
+            ctx.lineTo(nx + 21, ny + 39);
+            ctx.lineTo(nx + nodeW - 9, ny + 15);
+            ctx.stroke();
+        }
+        ctx.restore();
+    });
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
     uiButtons.forEach(btn => btn.state === state && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 }
 
@@ -388,6 +825,8 @@ function drawCamp() {
     ctx.fillStyle = COLORS.GOLD;
     ctx.font = "bold 20px Ubuntu";
     ctx.fillText(`SCORE: ${score}`, 480, 30);
+
+    drawAccountHeaderMini();
 
     const iconMap = { "CHAMPION": "camp_champion", "FORGE": "camp_craft", "BATTLE": "camp_battle" };
     uiButtons.forEach(btn => {
@@ -483,7 +922,8 @@ function drawForge() {
 
 function drawCombat() {
     drawPlayerClassSprite(selectedChar, COMBAT_PLAYER_SPRITE.x, COMBAT_PLAYER_SPRITE.y, COMBAT_PLAYER_SPRITE.w, COMBAT_PLAYER_SPRITE.h, "HERO");
-    drawSprite(`enemy_${currentLvl}`, COMBAT_ENEMY_SPRITE.x, COMBAT_ENEMY_SPRITE.y, COMBAT_ENEMY_SPRITE.w, COMBAT_ENEMY_SPRITE.h, enemy.name);
+    const bossSlot = enemy.bossSlot != null ? enemy.bossSlot : getBossSlot(currentLvl);
+    drawSprite(`enemy_${bossSlot}`, COMBAT_ENEMY_SPRITE.x, COMBAT_ENEMY_SPRITE.y, COMBAT_ENEMY_SPRITE.w, COMBAT_ENEMY_SPRITE.h, enemy.name);
     drawCombatFlashOverlays();
     drawHealthBar(40, 70, 300, pDisplayHp, player.maxHp, userName, true);
     drawHealthBar(620, 70, 300, eDisplayHp, enemy.maxHp, enemy.name, false);
@@ -707,6 +1147,7 @@ function drawInventory() {
         ctx.fillStyle = COLORS.PANEL; ctx.fillRect(30, 80, 900, 520);
     }
     ctx.strokeStyle = COLORS.GOLD; ctx.strokeRect(30, 80, 900, 520);
+    drawAccountHeaderMini();
     drawPlayerClassSprite(selectedChar, 40, 120, 400, 400, "CHAMPION");
 
 
@@ -717,17 +1158,30 @@ function drawInventory() {
     drawSlot(centerLine, 140, "WEAPON", player.weapon, 90);
     drawSlot(centerLine + 100, 140, "ARMOR", player.armor, 90);
 
+    const accountSlotLayout = getInventoryAccountSlotLayout(centerLine);
+    accountSlotLayout.forEach(entry => {
+        const m = entry.milestone;
+        const unlocked = typeof isAccountSlotUnlocked === "function" && isAccountSlotUnlocked(entry.slotId);
+        const item = unlocked ? player[entry.slotId] : null;
+        drawSlot(entry.x, entry.y, entry.slotLabel, item, entry.w, {
+            locked: !unlocked,
+            reqLevel: m && typeof m.level === "number" ? m.level : null
+        });
+    });
+
     ctx.fillStyle = COLORS.CREAM; ctx.font = "bold 22px Ubuntu"; ctx.textAlign = "left";
-    ctx.fillText("STATS", centerLine, 280);
+    ctx.fillText("STATS", centerLine, 328);
     if (player.points > 0) {
         ctx.fillStyle = COLORS.CREAM; ctx.font = "bold 14px Ubuntu";
-        ctx.fillText(`(AVAILABLE POINTS: ${player.points})`, centerLine + 80, 280);
+        ctx.fillText(`(AVAILABLE POINTS: ${player.points})`, centerLine + 80, 328);
     }
 
     const statIconMap = { STR: 'stat_icon_str', DEX: 'stat_icon_dex', STA: 'stat_icon_sta', LUCK: 'stat_icon_luck' };
+    const statRowStart = 348;
+    const statRowStep = 44;
 
     ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
-        const rowY = 300 + i * 55;
+        const rowY = statRowStart + i * statRowStep;
         const baseVal = player["base" + s];
         const bonusVal = player.bonus[s];
         const maxVal = player.maxStats[s];
@@ -791,7 +1245,13 @@ function drawInventory() {
     ctx.fillText(`INVENTORY (${player.inventory.length}/${INV_LIMIT})`, gridX, 120);
     ctx.fillStyle = "rgba(0, 0, 0, 0.3)"; ctx.fillRect(gridX, 135, 260, 340);
     player.inventory.forEach((item, i) => {
-        const x = gridX + 10 + (i % 4) * 62, y = 145 + Math.floor(i / 4) * 62, isEq = (player.weapon === item || player.armor === item);
+        const x = gridX + 10 + (i % 4) * 62, y = 145 + Math.floor(i / 4) * 62;
+        let isEq = player.weapon === item || player.armor === item;
+        if (!isEq && typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
+            for (const sid of ACCOUNT_EQUIP_SLOT_IDS) {
+                if (player[sid] === item) { isEq = true; break; }
+            }
+        }
         ctx.fillStyle = selectedInvItem === item ? COLORS.GOLD : (isEq ? COLORS.CYAN : COLORS.SLOT_BG);
         ctx.fillRect(x, y, 55, 55);
         drawSprite(item.name, x + 5, y + 5, 45, 45, item.name.substring(0, 2), COLORS[`RARITY_${item.rarity}`]);
@@ -820,7 +1280,13 @@ function renderItemDetails() {
         ctx.fillStyle = COLORS.CREAM; ctx.textAlign = "center"; ctx.fillText("X", 890, 137);
         ctx.fillStyle = COLORS[`RARITY_${selectedInvItem.rarity}`]; ctx.font = "bold 20px Ubuntu"; ctx.textAlign = "center";
         ctx.fillText(selectedInvItem.name.toUpperCase(), 755, 150);
-        const curEquip = (selectedInvItem.type === "weapon") ? player.weapon : player.armor;
+        let curEquip = null;
+        if (selectedInvItem.type === "weapon") curEquip = player.weapon;
+        else if (selectedInvItem.type === "armor") curEquip = player.armor;
+        else if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)
+            && ACCOUNT_EQUIP_SLOT_IDS.includes(selectedInvItem.type)) {
+            curEquip = player[selectedInvItem.type];
+        }
         let sy = 220;
         ["STR", "DEX", "STA", "LUCK"].forEach(s => {
             const newVal = selectedInvItem[s] || 0, oldVal = (curEquip && curEquip !== selectedInvItem) ? (curEquip[s] || 0) : 0, diff = newVal - oldVal;
@@ -936,21 +1402,27 @@ function drawBattleSelect() {
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.GOLD;
     ctx.font = "bold 40px Ubuntu";
-    ctx.fillText("SELECT YOUR NEXT BATTLE", 480, 100);
+    ctx.fillText("SELECT YOUR NEXT BATTLE", 480, 72);
+
+    const tierStart = getBattleSelectTierStart(maxLvl);
+    const tierIndex = Math.floor(tierStart / BOSSES_PER_TIER);
+    ctx.font = "bold 22px Ubuntu";
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.fillText(`Ring ${tierIndex + 1} — ${TIER_LABELS[tierIndex]}`, 480, 108);
 
     // Reuse progress bar logic for visualization but standalone
     const barWidth = 700, startX = (canvas.width - barWidth) / 2, startY = 150, slotW = barWidth / 5;
 
-    // Draw 10 levels in 2 rows
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= BOSSES_PER_TIER; i++) {
+        const globalStage = tierStart + i;
         const row = Math.floor((i - 1) / 5);
         const col = (i - 1) % 5;
         const x = startX + col * slotW;
         const y = startY + row * 150;
 
-        const isDefeated = i < maxLvl;
-        const isNext = i === maxLvl;
-        const isLocked = i > maxLvl;
+        const isDefeated = globalStage < maxLvl;
+        const isNext = globalStage === maxLvl;
+        const isLocked = globalStage > maxLvl;
 
         // Slot Background
         if (isDefeated) {
@@ -977,14 +1449,13 @@ function drawBattleSelect() {
         // Level Number
         ctx.fillStyle = isLocked ? COLORS.GRAY : (isNext ? COLORS.WHITE : "rgba(255,255,255,0.5)");
         ctx.font = "bold 18px Ubuntu";
-        ctx.fillText(`LEVEL ${i}`, x + slotW / 2, y + 25);
+        ctx.fillText(`STAGE ${globalStage}`, x + slotW / 2, y + 25);
 
         // Icon Area
         const iconSize = 80;
         const iconX = x + slotW / 2 - iconSize / 2;
         const iconY = y + 35;
 
-        // Draw Icon
         const iconKey = `enemy_icon_${i}`;
         ctx.save();
         if (isLocked) ctx.globalAlpha = 0.3;
@@ -1036,6 +1507,8 @@ function drawBattleSelect() {
             drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
         }
     });
+
+    drawAccountHeaderMini();
 }
 
 function drawMuteBtn() {

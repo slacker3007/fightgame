@@ -2,6 +2,16 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 let state = "char_select", userName = "", score = 0, currentLvl = 1, maxLvl = 1;
+/** "first_combat" after class pick; "battle_select" from camp BATTLE */
+let accountProfileExit = "first_combat";
+/** "gate" = pre-battle flow with CONTINUE; "browse" = opened from header, CLOSE returns. */
+let accountProfileMode = "gate";
+/** State to restore when closing browse-mode account profile. */
+let accountProfileReturnState = "camp";
+/** Draft text on account_nickname screen (saved with setAccountNickname on continue). */
+let accountNicknameInput = "";
+/** Persistent meta; owned by js/account.js (localStorage, future cloud). */
+let accountXp = 0, accountLevel = 1;
 let scoreDetails = { hits: 0, crits: 0, blocks: 0, hpBonus: 0, stageClear: 0 };
 let player = {}, enemy = {}, log = [];
 let selAtk = null, selBlk = [], isProcessing = false;
@@ -116,7 +126,7 @@ ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase()
 
 let levelUpTimer = 0;
 
-/** Autoplay: toggled in combat (unlocks after first stage clear); speed persists for the run */
+/** Autoplay: toggled in combat (unlocks after first stage clear or account Lv 2+); speed persists for the run */
 const AUTOPLAY_BASE_STEP_MS = 1000;
 let combatAutoplayActive = false;
 let combatAutoplaySpeed = 1;

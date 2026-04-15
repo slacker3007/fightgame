@@ -14,6 +14,10 @@ function initPlayer(charType) {
     if (charType === "LUCK") base.LUCK = 5;
     if (charType === "STA") base.STA = 5;
 
+    const extraSlots = {};
+    if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
+        for (const sid of ACCOUNT_EQUIP_SLOT_IDS) extraSlots[sid] = null;
+    }
     player = {
         baseSTR: base.STR, baseDEX: base.DEX, baseSTA: base.STA, baseLUCK: base.LUCK,
         maxStats: {
@@ -25,6 +29,7 @@ function initPlayer(charType) {
         hp: 0, maxHp: 0,
         fury: 0, maxFury: 100, isGodStrike: false,
         weapon: null, armor: null,
+        ...extraSlots,
         inventory: [],
         ore: 0,
         points: 0,
@@ -41,8 +46,26 @@ function initPlayer(charType) {
 }
 
 function calcStats() {
+    if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
+        for (const sid of ACCOUNT_EQUIP_SLOT_IDS) {
+            if (typeof isAccountSlotUnlocked === "function" && !isAccountSlotUnlocked(sid)) {
+                player[sid] = null;
+            }
+        }
+    }
+    if (player.mystery80 != null) player.mystery80 = null;
+    if (player.mystery90 != null) player.mystery90 = null;
+    if (player.mystery100 != null) player.mystery100 = null;
     player.bonus = { STR: 0, DEX: 0, STA: 0, LUCK: 0 };
-    [player.weapon, player.armor].forEach(item => {
+    const equipList = [player.weapon, player.armor];
+    if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
+        for (const sid of ACCOUNT_EQUIP_SLOT_IDS) {
+            if (typeof isAccountSlotUnlocked === "function" && isAccountSlotUnlocked(sid) && player[sid]) {
+                equipList.push(player[sid]);
+            }
+        }
+    }
+    equipList.forEach(item => {
         if (item) {
             ["STR", "DEX", "STA", "LUCK"].forEach(s => {
                 if (item[s]) player.bonus[s] += item[s];
@@ -76,14 +99,15 @@ function startLevel(lvl) {
     combatAutoplayCancelled = false;
     autoplayKickPending = false;
     currentLvl = lvl;
-    const d = ENEMY_DATA[lvl - 1];
+    const spec = getScaledEnemyForStage(lvl);
     enemy = {
-        name: d[0],
-        hp: d[1],
-        maxHp: d[1],
-        dmg: d[2],
-        dodge: d[3],
-        archetype: d[4] || "balanced",
+        name: spec.name,
+        hp: spec.hp,
+        maxHp: spec.hp,
+        dmg: spec.dmg,
+        dodge: spec.dodge,
+        archetype: spec.archetype,
+        bossSlot: spec.bossSlot,
         nextAtk: null
     };
     player.hp = player.maxHp;
@@ -93,7 +117,8 @@ function startLevel(lvl) {
     combatFlashes = [];
     combatVignette = 0;
     changeState("combat");
-    if (lvl === 2 && !localStorage.getItem(GAUNTLET_AUTOPLAY_TIP_DISMISSED_KEY)) {
+    const autoplayUnlocked = maxLvl > 1 || accountLevel >= 2;
+    if (autoplayUnlocked && (lvl === 2 || (lvl === 1 && accountLevel >= 2)) && !localStorage.getItem(GAUNTLET_AUTOPLAY_TIP_DISMISSED_KEY)) {
         showAutoplayTip = true;
     } else {
         showAutoplayTip = false;
@@ -107,6 +132,23 @@ function autoplaySleep(ms, gen) {
     });
 }
 
+function currentAutoplayStepMs() {
+    return AUTOPLAY_BASE_STEP_MS / Math.max(1, Math.min(3, combatAutoplaySpeed));
+}
+
+/** Mid-turn pause after player strike; length tracks live autoplay speed / on-off. */
+async function waitResolveMidTurnPause() {
+    let elapsed = 0;
+    while (true) {
+        const active = combatAutoplayActive && !combatAutoplayCancelled;
+        const totalMs = active ? 600 / Math.max(1, Math.min(3, combatAutoplaySpeed)) : 600;
+        if (elapsed >= totalMs) break;
+        const slice = Math.min(50, totalMs - elapsed);
+        await new Promise(r => setTimeout(r, slice));
+        elapsed += slice;
+    }
+}
+
 function shuffleZonesForAutoplay() {
     const z = ["1", "2", "3", "4", "5"];
     for (let i = z.length - 1; i > 0; i--) {
@@ -118,23 +160,22 @@ function shuffleZonesForAutoplay() {
 
 async function runCombatAutoplayTurn() {
     const gen = autoplayCancelGen;
-    const stepMs = AUTOPLAY_BASE_STEP_MS / Math.max(1, Math.min(3, combatAutoplaySpeed));
 
     const bail = () => state !== "combat" || !combatAutoplayActive || combatAutoplayCancelled || isProcessing;
 
-    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    if (!(await autoplaySleep(currentAutoplayStepMs(), gen)) || bail()) return;
 
     const zones = shuffleZonesForAutoplay();
     selBlk = [zones[0]];
     selAtk = null;
 
-    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    if (!(await autoplaySleep(currentAutoplayStepMs(), gen)) || bail()) return;
     selBlk = [zones[0], zones[1]];
 
-    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    if (!(await autoplaySleep(currentAutoplayStepMs(), gen)) || bail()) return;
     selAtk = (Math.floor(Math.random() * 5) + 1).toString();
 
-    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    if (!(await autoplaySleep(currentAutoplayStepMs(), gen)) || bail()) return;
 
     if (player.fury >= player.maxFury) {
         player.isGodStrike = false;
@@ -314,10 +355,7 @@ async function resolveTurn() {
         if (!useGodStrike) player.fury = Math.min(player.maxFury, player.fury + 15);
     }
 
-    const resolvePauseMs = combatAutoplayActive && !combatAutoplayCancelled
-        ? 600 / Math.max(1, Math.min(3, combatAutoplaySpeed))
-        : 600;
-    await new Promise(r => setTimeout(r, resolvePauseMs));
+    await waitResolveMidTurnPause();
 
     if (enemy.hp > 0) {
         let eAtk = enemy.nextAtk;
@@ -372,13 +410,17 @@ function checkEnd() {
         scoreDetails.stageClear += stagePoints;
         scoreDetails.hpBonus += hpBonus;
 
-        if (currentLvl === 10) {
+        if (currentLvl === GAUNTLET_TOTAL_STAGES) {
+            awardAccountXpForStageClear(currentLvl, true);
+            recordBestStageCleared(currentLvl);
             saveScore();
             changeState("victory");
         } else {
+            awardAccountXpForStageClear(currentLvl, false);
             if (currentLvl === maxLvl) {
-                maxLvl = Math.min(10, maxLvl + 1);
+                maxLvl = Math.min(GAUNTLET_TOTAL_STAGES, maxLvl + 1);
             }
+            recordBestStageCleared(currentLvl);
             player.ore += (currentLvl * 5);
             player.points += 2;
             player.hp = player.maxHp;
@@ -422,7 +464,10 @@ function craftItem() {
     else if (roll < legCh + epicCh) rarity = "EPIC";
     else if (roll < legCh + epicCh + rareCh) rarity = "RARE";
 
-    const possible = ALL_ITEMS.filter(i => i.rarity === rarity);
+    let possible = ALL_ITEMS.filter(i => i.rarity === rarity && (i.type === "weapon" || i.type === "armor"));
+    if (possible.length === 0) {
+        possible = ALL_ITEMS.filter(i => i.type === "weapon" || i.type === "armor");
+    }
     const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
     pendingCraftedItem = newItem;
     AudioEngine.playCast();
@@ -445,8 +490,19 @@ function resolveCrafting(keep) {
     craftedItem = null;
 }
 
+function isItemEquippedAnywhere(item) {
+    if (!item || !player) return false;
+    if (item === player.weapon || item === player.armor) return true;
+    if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
+        for (const sid of ACCOUNT_EQUIP_SLOT_IDS) {
+            if (player[sid] === item) return true;
+        }
+    }
+    return false;
+}
+
 function salvageItem(item) {
-    if (!item || item === player.weapon || item === player.armor) return;
+    if (!item || isItemEquippedAnywhere(item)) return;
 
     const refund = item.rarity === "EPIC" ? 8 : (item.rarity === "RARE" ? 5 : 3);
     player.ore += refund;
