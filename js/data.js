@@ -45,6 +45,24 @@ const ACCOUNT_LEVEL_MILESTONES = [
     { level: 100, ore: 0, rewardType: "passive", label: "Passive", slotLabel: "★" }
 ];
 
+const ACCOUNT_PASSIVE_MILESTONE_FIRST = 5;
+const ACCOUNT_PASSIVE_MILESTONE_STEP = 10;
+
+function isAccountPassiveMilestoneLevel(level) {
+    if (typeof level !== "number") return false;
+    return level >= ACCOUNT_PASSIVE_MILESTONE_FIRST
+        && ((level - ACCOUNT_PASSIVE_MILESTONE_FIRST) % ACCOUNT_PASSIVE_MILESTONE_STEP === 0);
+}
+
+function getAccountPassiveMilestoneLevelsThrough(maxLevel) {
+    const out = [];
+    const cap = Math.max(1, Math.floor(maxLevel || 1));
+    for (let lv = ACCOUNT_PASSIVE_MILESTONE_FIRST; lv <= cap; lv += ACCOUNT_PASSIVE_MILESTONE_STEP) {
+        out.push(lv);
+    }
+    return out;
+}
+
 /** Seven accessory slots (nine total gear pieces with weapon + armor). */
 const ACCOUNT_EQUIP_SLOT_IDS = ["shield", "helm", "gloves", "boots", "ring", "necklace", "banner"];
 
@@ -101,6 +119,38 @@ function getScaledEnemyForStage(stage) {
     };
 }
 
+/**
+ * Craft unlocks are tied to current run progress (`maxLvl`) and not account level.
+ * Item types unlock every 10 stages after armor, starting from:
+ * weapon 1, armor 1, helm 11.
+ */
+const ITEM_TYPE_MIN_STAGE = Object.freeze({
+    weapon: 1,
+    armor: 1,
+    shield: 11,
+    helm: 21,
+    gloves: 31,
+    boots: 41,
+    ring: 51,
+    necklace: 61,
+    banner: 71
+});
+
+function getCraftTypeMinStage(type) {
+    if (!type) return Number.POSITIVE_INFINITY;
+    return Object.prototype.hasOwnProperty.call(ITEM_TYPE_MIN_STAGE, type)
+        ? ITEM_TYPE_MIN_STAGE[type]
+        : Number.POSITIVE_INFINITY;
+}
+
+function isCraftTypeUnlockedAtStage(type, stage) {
+    return stage >= getCraftTypeMinStage(type);
+}
+
+function getUnlockedCraftTypesAtStage(stage) {
+    return Object.keys(ITEM_TYPE_MIN_STAGE).filter(type => isCraftTypeUnlockedAtStage(type, stage));
+}
+
 const ALL_ITEMS = [
     { name: "Rusty Dagger", type: "weapon", STR: 2, LUCK: 1, rarity: "COMMON" },
     { name: "Soldier's Sword", type: "weapon", STR: 5, LUCK: 2, rarity: "COMMON" },
@@ -120,5 +170,19 @@ const ALL_ITEMS = [
     { name: "Travel Boots", type: "boots", STA: 1, DEX: 1, rarity: "COMMON" },
     { name: "Copper Ring", type: "ring", LUCK: 2, rarity: "COMMON" },
     { name: "Bone Charm", type: "necklace", STR: 1, LUCK: 1, rarity: "COMMON" },
-    { name: "Tattered Standard", type: "banner", STA: 2, rarity: "COMMON" }
+    { name: "Tattered Standard", type: "banner", STA: 2, rarity: "COMMON" },
+    { name: "Frostguard Helm", type: "helm", STA: 3, DEX: 2, rarity: "RARE" },
+    { name: "Warden Visor", type: "helm", STR: 4, STA: 3, rarity: "EPIC" },
+    { name: "Aegis Bulwark", type: "shield", STA: 4, STR: 2, rarity: "RARE" },
+    { name: "Bastion Ward", type: "shield", STA: 7, STR: 3, rarity: "EPIC" },
+    { name: "Quickdraw Grips", type: "gloves", DEX: 3, LUCK: 2, rarity: "RARE" },
+    { name: "Shadowweave Gauntlets", type: "gloves", DEX: 5, STR: 2, rarity: "EPIC" },
+    { name: "Trailrunner Boots", type: "boots", DEX: 3, STA: 2, rarity: "RARE" },
+    { name: "Stormstep Greaves", type: "boots", DEX: 5, STA: 4, rarity: "EPIC" },
+    { name: "Lucky Loop", type: "ring", LUCK: 4, DEX: 1, rarity: "RARE" },
+    { name: "Astral Band", type: "ring", LUCK: 6, STR: 2, rarity: "EPIC" },
+    { name: "Runed Pendant", type: "necklace", STR: 3, LUCK: 3, rarity: "RARE" },
+    { name: "Heartfire Talisman", type: "necklace", STR: 4, STA: 4, rarity: "EPIC" },
+    { name: "Ironbound Banner", type: "banner", STA: 4, STR: 2, rarity: "RARE" },
+    { name: "Warleader Standard", type: "banner", STA: 6, STR: 4, rarity: "EPIC" }
 ];

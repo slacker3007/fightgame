@@ -7,6 +7,19 @@ function createButton(x, y, w, h, stateReq, label, color, action) {
 
 const mobileInput = document.getElementById('mobileInput');
 
+function getAccountAuthFormLayout() {
+    return {
+        nicknameBox: { x: 330, y: 250, w: 300, h: 50 },
+        passwordBox: { x: 330, y: 335, w: 300, h: 50 }
+    };
+}
+
+function focusMobileInputForAuth(field) {
+    accountAuthActiveField = field === "password" ? "password" : "nickname";
+    mobileInput.value = accountAuthActiveField === "password" ? accountAuthPasswordInput : accountAuthNicknameInput;
+    mobileInput.focus();
+}
+
 function getMousePos(e) {
     const r = canvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -38,6 +51,16 @@ function handleInteraction(e) {
             accountProfileMode = "browse";
             changeState("account_profile");
             return;
+        }
+    }
+
+    if (state === "account_register" || state === "account_login") {
+        const form = getAccountAuthFormLayout();
+        const inRect = (r) => mx > r.x && mx < r.x + r.w && my > r.y && my < r.y + r.h;
+        if (inRect(form.nicknameBox)) {
+            focusMobileInputForAuth("nickname");
+        } else if (inRect(form.passwordBox)) {
+            focusMobileInputForAuth("password");
         }
     }
 
@@ -120,6 +143,28 @@ function prepareNewRunFromClassSelect() {
     autoplayKickPending = false;
 }
 
+function performLogoutToAuth() {
+    logoutLocalAccount();
+    selectedChar = null;
+    score = 0;
+    currentLvl = 1;
+    maxLvl = 1;
+    selAtk = null;
+    selBlk = [];
+    isProcessing = false;
+    combatAutoplayActive = false;
+    combatAutoplaySpeed = 1;
+    combatAutoplayCancelled = false;
+    autoplayKickPending = false;
+    bumpAutoplayCancel();
+    accountAuthMessage = "";
+    accountAuthNicknameInput = "";
+    accountAuthPasswordInput = "";
+    accountAuthActiveField = "nickname";
+    mobileInput.blur();
+    changeState("account_auth");
+}
+
 function continueFromAccountProfile() {
     if (accountProfileExit === "first_combat") {
         startLevel(1);
@@ -137,13 +182,11 @@ function handleInventoryClick(mx, my) {
     }
 
     const centerLine = 410;
-    if (mx > centerLine && mx < centerLine + 90 && my > 140 && my < 230) selectedInvItem = player.weapon;
-    if (mx > centerLine + 100 && mx < centerLine + 190 && my > 140 && my < 230) selectedInvItem = player.armor;
-
-    const accountSlotLayout = typeof getInventoryAccountSlotLayout === "function" ? getInventoryAccountSlotLayout(centerLine) : [];
-    for (const entry of accountSlotLayout) {
+    const equipmentGridLayout = typeof getInventoryEquipmentGridLayout === "function" ? getInventoryEquipmentGridLayout(centerLine) : [];
+    for (const entry of equipmentGridLayout) {
         if (mx > entry.x && mx < entry.x + entry.w && my > entry.y && my < entry.y + entry.h) {
-            if (typeof isAccountSlotUnlocked === "function" && isAccountSlotUnlocked(entry.slotId)) {
+            const unlocked = entry.baseSlot || (typeof isAccountSlotUnlocked === "function" && isAccountSlotUnlocked(entry.slotId));
+            if (unlocked) {
                 selectedInvItem = player[entry.slotId];
                 salvageConfirm = null;
             }
@@ -161,7 +204,7 @@ function handleInventoryClick(mx, my) {
         }
     });
 
-    const statRowStart = 348;
+    const statRowStart = 350;
     const statRowStep = 44;
     ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
         const rowY = statRowStart + i * statRowStep;
@@ -170,6 +213,9 @@ function handleInventoryClick(mx, my) {
         if (player.points > 0 && player["base" + s] < maxVal && mx > btnX && mx < btnX + 30 && my > btnY && my < btnY + 30) {
             player["base" + s]++;
             player.points--;
+            if (typeof maybeUnlockNextStatCapTier === "function") {
+                maybeUnlockNextStatCapTier();
+            }
             calcStats();
         }
     });
@@ -193,6 +239,70 @@ function handleCombatClick(mx, my) {
 
 function updateUIButtons() {
     uiButtons = [];
+    if (state === "account_auth") {
+        createButton(350, 320, 260, 50, "account_auth", "LOGIN", COLORS.BTN_BLUE, () => {
+            accountAuthMessage = "";
+            accountAuthNicknameInput = "";
+            accountAuthPasswordInput = "";
+            accountAuthActiveField = "nickname";
+            mobileInput.blur();
+            changeState("account_login");
+        });
+        createButton(350, 385, 260, 50, "account_auth", "REGISTER", COLORS.GREEN, () => {
+            accountAuthMessage = "";
+            accountAuthNicknameInput = "";
+            accountAuthPasswordInput = "";
+            accountAuthActiveField = "nickname";
+            mobileInput.blur();
+            changeState("account_register");
+        });
+    }
+    if (state === "account_register") {
+        createButton(260, 500, 170, 44, "account_register", "BACK", COLORS.GRAY, () => {
+            accountAuthMessage = "";
+            mobileInput.blur();
+            changeState("account_auth");
+        });
+        createButton(500, 500, 200, 44, "account_register", accountAuthBusy ? "WORKING..." : "CREATE ACCOUNT", COLORS.GREEN, async () => {
+            if (accountAuthBusy) return;
+            accountAuthBusy = true;
+            accountAuthMessage = "";
+            const res = await registerLocalAccount(accountAuthNicknameInput, accountAuthPasswordInput);
+            accountAuthBusy = false;
+            if (!res.ok) {
+                accountAuthMessage = res.error || "Could not register account.";
+                return;
+            }
+            accountAuthNicknameInput = "";
+            accountAuthPasswordInput = "";
+            accountAuthMessage = "";
+            mobileInput.blur();
+            changeState("char_select");
+        });
+    }
+    if (state === "account_login") {
+        createButton(260, 500, 170, 44, "account_login", "BACK", COLORS.GRAY, () => {
+            accountAuthMessage = "";
+            mobileInput.blur();
+            changeState("account_auth");
+        });
+        createButton(520, 500, 160, 44, "account_login", accountAuthBusy ? "WORKING..." : "LOGIN", COLORS.BTN_BLUE, async () => {
+            if (accountAuthBusy) return;
+            accountAuthBusy = true;
+            accountAuthMessage = "";
+            const res = await loginLocalAccount(accountAuthNicknameInput, accountAuthPasswordInput);
+            accountAuthBusy = false;
+            if (!res.ok) {
+                accountAuthMessage = res.error || "Login failed.";
+                return;
+            }
+            accountAuthNicknameInput = "";
+            accountAuthPasswordInput = "";
+            accountAuthMessage = "";
+            mobileInput.blur();
+            changeState("char_select");
+        });
+    }
     if (state === "account_nickname") {
         if (accountNicknameInput.length > 0) {
             createButton(380, 590, 200, 40, "account_nickname", "CONTINUE", COLORS.GREEN, () => {
@@ -220,6 +330,9 @@ function updateUIButtons() {
             createButton(400, 590, 180, 40, "account_profile", "CLOSE", COLORS.GRAY, () => {
                 changeState(accountProfileReturnState);
             });
+            createButton(170, 590, 180, 40, "account_profile", "LOG OUT", COLORS.RED, () => {
+                performLogoutToAuth();
+            });
             if (getPortraitApiUrl()) {
                 createButton(600, 590, 200, 40, "account_profile", "REGENERATE", COLORS.BTN_BLUE, () => regenerateAccountPortrait());
             }
@@ -232,6 +345,9 @@ function updateUIButtons() {
             if (getPortraitApiUrl()) {
                 createButton(620, 590, 200, 40, "account_profile", "REGENERATE", COLORS.BTN_BLUE, () => regenerateAccountPortrait());
             }
+            createButton(20, 590, 130, 40, "account_profile", "LOG OUT", COLORS.RED, () => {
+                performLogoutToAuth();
+            });
         }
     }
     if (state === "camp") {
@@ -248,7 +364,18 @@ function updateUIButtons() {
             createButton(300, 500, 160, 50, "forge", "KEEP", COLORS.GREEN, () => resolveCrafting(true));
             createButton(500, 500, 160, 50, "forge", "SALVAGE", COLORS.RED, () => resolveCrafting(false));
         } else {
-            createButton(370, 120, 220, 220, "forge", "CRAFT", "#cc8400", () => craftItem());
+            const craftStage = typeof getCurrentCraftStageProgress === "function" ? getCurrentCraftStageProgress() : 1;
+            const hasCraftablePool = typeof getCraftableItemsForStage === "function"
+                ? getCraftableItemsForStage(craftStage).length > 0
+                : true;
+            if (hasCraftablePool) {
+                createButton(370, 120, 220, 220, "forge", "CRAFT", "#cc8400", () => craftItem());
+            } else {
+                createButton(370, 120, 220, 220, "forge", "CRAFT LOCKED", COLORS.DIM_GRAY, () => {
+                    addLog(`No craftable types unlocked for stage ${craftStage}.`, COLORS.BLOOD_RED);
+                    spawnText("FORGE LOCKED", 480, 325, COLORS.RED);
+                });
+            }
             createButton(350, 530, 225, 60, "forge", "BACK TO CAMP", COLORS.GRAY, () => changeState("camp"));
         }
     }
@@ -405,10 +532,51 @@ function updateUIButtons() {
 mobileInput.addEventListener('input', () => {
     if (state === "account_nickname") {
         accountNicknameInput = mobileInput.value.slice(0, ACCOUNT_NICKNAME_MAX_LEN);
+    } else if (state === "account_register" || state === "account_login") {
+        if (accountAuthActiveField === "password") {
+            accountAuthPasswordInput = mobileInput.value.slice(0, 24);
+        } else {
+            accountAuthNicknameInput = mobileInput.value.slice(0, ACCOUNT_NICKNAME_MAX_LEN);
+        }
     }
 });
 
 window.addEventListener('keydown', e => {
+    if (state === "account_register" || state === "account_login") {
+        AudioEngine.init();
+        if (e.key === "Tab") {
+            accountAuthActiveField = accountAuthActiveField === "nickname" ? "password" : "nickname";
+            mobileInput.value = accountAuthActiveField === "password" ? accountAuthPasswordInput : accountAuthNicknameInput;
+            e.preventDefault();
+            return;
+        }
+        if (e.key === "Enter") {
+            const submitBtn = uiButtons.find(b =>
+                b.state === state && (b.label === "CREATE ACCOUNT" || b.label === "LOGIN")
+            );
+            if (submitBtn) submitBtn.action();
+            return;
+        }
+        if (document.activeElement === mobileInput) return;
+
+        const isPassword = accountAuthActiveField === "password";
+        const source = isPassword ? accountAuthPasswordInput : accountAuthNicknameInput;
+        const maxLen = isPassword ? 24 : ACCOUNT_NICKNAME_MAX_LEN;
+        let next = source;
+        if (e.key === "Backspace") {
+            next = source.slice(0, -1);
+            e.preventDefault();
+        } else if (e.key.length === 1 && source.length < maxLen) {
+            next = source + e.key;
+        } else {
+            return;
+        }
+        if (isPassword) accountAuthPasswordInput = next;
+        else accountAuthNicknameInput = next;
+        mobileInput.value = next;
+        return;
+    }
+
     if (state === "account_nickname") {
         AudioEngine.init();
         if (e.key === "Enter" && accountNicknameInput.length > 0) {
@@ -527,6 +695,9 @@ function gameLoop() {
         }
 
         if (state === "account_nickname") drawAccountNickname();
+        else if (state === "account_auth") drawAccountAuth();
+        else if (state === "account_register") drawAccountRegister();
+        else if (state === "account_login") drawAccountLogin();
         else if (state === "char_select") drawCharSelect();
         else if (state === "account_profile") drawAccountProfile();
         else if (state === "camp") drawCamp();

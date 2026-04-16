@@ -1,7 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let state = "char_select", userName = "", score = 0, currentLvl = 1, maxLvl = 1;
+let state = "account_auth", userName = "", score = 0, currentLvl = 1, maxLvl = 1;
 /** "first_combat" after class pick; "battle_select" from camp BATTLE */
 let accountProfileExit = "first_combat";
 /** "gate" = pre-battle flow with CONTINUE; "browse" = opened from header, CLOSE returns. */
@@ -10,6 +10,12 @@ let accountProfileMode = "gate";
 let accountProfileReturnState = "camp";
 /** Draft text on account_nickname screen (saved with setAccountNickname on continue). */
 let accountNicknameInput = "";
+/** Local auth form state (register/login screens). */
+let accountAuthNicknameInput = "";
+let accountAuthPasswordInput = "";
+let accountAuthMessage = "";
+let accountAuthBusy = false;
+let accountAuthActiveField = "nickname";
 /** Persistent meta; owned by js/account.js (localStorage, future cloud). */
 let accountXp = 0, accountLevel = 1;
 let scoreDetails = { hits: 0, crits: 0, blocks: 0, hpBonus: 0, stageClear: 0 };

@@ -6,6 +6,20 @@ function getMaxStat(charType, statName) {
     return (charType === statName) ? 15 : 10;
 }
 
+function maybeUnlockNextStatCapTier() {
+    const stats = ["STR", "DEX", "STA", "LUCK"];
+    const cappedCount = stats.reduce((count, stat) => {
+        return count + (player["base" + stat] >= player.maxStats[stat] ? 1 : 0);
+    }, 0);
+
+    if (cappedCount < 3) return false;
+
+    stats.forEach(stat => {
+        player.maxStats[stat] += 5;
+    });
+    return true;
+}
+
 function initPlayer(charType) {
     selectedChar = charType;
     let base = { STR: 2, DEX: 2, STA: 2, LUCK: 2 };
@@ -33,6 +47,7 @@ function initPlayer(charType) {
         inventory: [],
         ore: 0,
         points: 0,
+        accountBonus: { STR: 0, DEX: 0, STA: 0, LUCK: 0 },
         bonus: { STR: 0, DEX: 0, STA: 0, LUCK: 0 },
         total: { STR: base.STR, DEX: base.DEX, STA: base.STA, LUCK: base.LUCK }
     };
@@ -56,6 +71,15 @@ function calcStats() {
     if (player.mystery80 != null) player.mystery80 = null;
     if (player.mystery90 != null) player.mystery90 = null;
     if (player.mystery100 != null) player.mystery100 = null;
+    const accountBonus = typeof getAccountPermanentStatBonus === "function"
+        ? getAccountPermanentStatBonus()
+        : { STR: 0, DEX: 0, STA: 0, LUCK: 0 };
+    player.accountBonus = {
+        STR: Math.max(0, Math.floor(accountBonus.STR || 0)),
+        DEX: Math.max(0, Math.floor(accountBonus.DEX || 0)),
+        STA: Math.max(0, Math.floor(accountBonus.STA || 0)),
+        LUCK: Math.max(0, Math.floor(accountBonus.LUCK || 0))
+    };
     player.bonus = { STR: 0, DEX: 0, STA: 0, LUCK: 0 };
     const equipList = [player.weapon, player.armor];
     if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
@@ -74,7 +98,7 @@ function calcStats() {
     });
 
     ["STR", "DEX", "STA", "LUCK"].forEach(s => {
-        player.total[s] = player["base" + s] + player.bonus[s];
+        player.total[s] = player["base" + s] + player.accountBonus[s] + player.bonus[s];
     });
 
     player.maxHp = 100 + (player.total.STA * 15);
@@ -438,10 +462,31 @@ function checkEnd() {
     }
 }
 
+function getCurrentCraftStageProgress() {
+    return Math.max(1, maxLvl || 1);
+}
+
+function getCraftableItemsForStage(stage, rarity) {
+    return ALL_ITEMS.filter(item => {
+        if (rarity && item.rarity !== rarity) return false;
+        return typeof isCraftTypeUnlockedAtStage === "function"
+            ? isCraftTypeUnlockedAtStage(item.type, stage)
+            : item.type === "weapon" || item.type === "armor";
+    });
+}
+
 function craftItem() {
     if (player.inventory.length >= INV_LIMIT) {
         inventoryError = true;
         addLog("Inventory Full!", COLORS.BLOOD_RED);
+        return;
+    }
+
+    const craftStage = getCurrentCraftStageProgress();
+    const unlockedPool = getCraftableItemsForStage(craftStage);
+    if (unlockedPool.length === 0) {
+        addLog(`No craftable items unlocked at stage ${craftStage}.`, COLORS.BLOOD_RED);
+        spawnText("FORGE LOCKED", 480, 325, COLORS.RED);
         return;
     }
 
@@ -464,9 +509,15 @@ function craftItem() {
     else if (roll < legCh + epicCh) rarity = "EPIC";
     else if (roll < legCh + epicCh + rareCh) rarity = "RARE";
 
-    let possible = ALL_ITEMS.filter(i => i.rarity === rarity && (i.type === "weapon" || i.type === "armor"));
+    let possible = getCraftableItemsForStage(craftStage, rarity);
     if (possible.length === 0) {
-        possible = ALL_ITEMS.filter(i => i.type === "weapon" || i.type === "armor");
+        possible = unlockedPool;
+    }
+    if (possible.length === 0) {
+        player.ore += COST;
+        addLog("Craft failed: no eligible item pool.", COLORS.BLOOD_RED);
+        spawnText("NO ITEMS", 480, 325, COLORS.RED);
+        return;
     }
     const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
     pendingCraftedItem = newItem;
