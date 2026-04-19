@@ -122,6 +122,35 @@ function handleInteraction(e) {
 canvas.addEventListener('mousedown', handleInteraction);
 canvas.addEventListener('touchstart', handleInteraction, { passive: false });
 
+function handleAccountProfileMouseMove(e) {
+    if (!isLoaded) return;
+    if (state !== "account_profile") {
+        accountRoadmapHover = null;
+        return;
+    }
+    if (e && e.touches && e.touches.length) return;
+    const pos = getMousePos(e);
+    accountRoadmapHoverPt.x = pos.x;
+    accountRoadmapHoverPt.y = pos.y;
+    const L = getAccountProfileLayout();
+    accountRoadmapHover = typeof hitTestAccountRoadmap === "function"
+        ? hitTestAccountRoadmap(pos.x, pos.y, L)
+        : null;
+}
+
+function handleAccountProfileMouseLeave() {
+    accountRoadmapHover = null;
+}
+
+canvas.addEventListener("mousemove", e => {
+    handleAccountProfileMouseMove(e);
+    handleInventoryMouseMove(e);
+});
+canvas.addEventListener("mouseleave", () => {
+    handleAccountProfileMouseLeave();
+    handleInventoryMouseLeave();
+});
+
 window.addEventListener('keydown', (e) => {
     if (!devIdleStaEnabled || !isLoaded) return;
     const n = DEV_STA_IDLE_KEYS.length;
@@ -166,12 +195,8 @@ function performLogoutToAuth() {
 }
 
 function continueFromAccountProfile() {
-    if (accountProfileExit === "first_combat") {
-        startLevel(1);
-        if (typeof bgVideo !== 'undefined') bgVideo.play();
-    } else {
-        changeState("battle_select");
-    }
+    if (accountProfileMode === "browse") return;
+    changeState("char_select");
 }
 
 function handleInventoryClick(mx, my) {
@@ -181,9 +206,21 @@ function handleInventoryClick(mx, my) {
         selectedInvItem = null; return;
     }
 
-    const centerLine = 410;
-    const equipmentGridLayout = typeof getInventoryEquipmentGridLayout === "function" ? getInventoryEquipmentGridLayout(centerLine) : [];
-    for (const entry of equipmentGridLayout) {
+    const L = typeof getChampionScreenLayout === "function" ? getChampionScreenLayout() : {
+        equipmentSlots: [],
+        stats: {
+            panel: { x: 0, y: 0, w: 0, h: 0 },
+            rowStart: 0,
+            rowStep: 44,
+            rowWidth: 0,
+            plusRelX: 0,
+            equipmentLabelY: 0,
+            equipmentGrid: { x: 0, y: 0, w: 0, h: 0, slotSize: 56, gap: 6 }
+        },
+        inventory: { gridX: 662, pad: 8, cell: 55, gap: 7, cols: 4, bodyTop: 132 }
+    };
+
+    for (const entry of L.equipmentSlots) {
         if (mx > entry.x && mx < entry.x + entry.w && my > entry.y && my < entry.y + entry.h) {
             const unlocked = entry.baseSlot || (typeof isAccountSlotUnlocked === "function" && isAccountSlotUnlocked(entry.slotId));
             if (unlocked) {
@@ -194,21 +231,37 @@ function handleInventoryClick(mx, my) {
         }
     }
 
-    const gridX = 660;
-    player.inventory.forEach((item, i) => {
-        const x = gridX + 10 + (i % 4) * 62;
-        const y = 145 + Math.floor(i / 4) * 62;
-        if (mx > x && mx < x + 55 && my > y && my < y + 55) {
-            selectedInvItem = item;
-            salvageConfirm = null;
+    const inv = L.inventory;
+    const cellStride = inv.cell + inv.gap;
+    for (let i = 0; i < 4; i++) {
+        const x = inv.gridX + inv.pad + i * cellStride;
+        const y = inv.bodyTop;
+        if (mx > x && mx < x + inv.cell && my > y && my < y + inv.cell) {
+            if (i < player.inventory.length) {
+                selectedInvItem = player.inventory[i];
+                salvageConfirm = null;
+            } else {
+                selectedInvItem = null;
+                salvageConfirm = null;
+            }
+            break;
         }
-    });
+    }
+    for (let i = 4; i < player.inventory.length; i++) {
+        const x = inv.gridX + inv.pad + (i % inv.cols) * cellStride;
+        const y = inv.bodyTop + Math.floor(i / inv.cols) * cellStride;
+        if (mx > x && mx < x + inv.cell && my > y && my < y + inv.cell) {
+            selectedInvItem = player.inventory[i];
+            salvageConfirm = null;
+            break;
+        }
+    }
 
-    const statRowStart = 350;
-    const statRowStep = 44;
+    const S = L.stats;
     ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
-        const rowY = statRowStart + i * statRowStep;
-        const btnX = centerLine + 205, btnY = rowY + 7;
+        const rowY = S.rowStart + i * S.rowStep;
+        const btnX = S.panel.x + S.plusRelX;
+        const btnY = rowY + 6;
         const maxVal = player.maxStats[s];
         if (player.points > 0 && player["base" + s] < maxVal && mx > btnX && mx < btnX + 30 && my > btnY && my < btnY + 30) {
             player["base" + s]++;
@@ -219,6 +272,49 @@ function handleInventoryClick(mx, my) {
             calcStats();
         }
     });
+}
+
+function handleInventoryMouseMove(e) {
+    if (!isLoaded) return;
+    if (state !== "inventory") {
+        inventoryStatHover = null;
+        return;
+    }
+    if (e && e.touches && e.touches.length) return;
+    const pos = getMousePos(e);
+    inventoryHoverPt.x = pos.x;
+    inventoryHoverPt.y = pos.y;
+    const prev = inventoryStatHover;
+    inventoryStatHover = null;
+    if (typeof getChampionScreenLayout !== "function") return;
+    const L = getChampionScreenLayout();
+    const S = L.stats;
+    const mx = pos.x;
+    const my = pos.y;
+    ["STR", "DEX", "STA", "LUCK"].forEach((s, i) => {
+        const rowY = S.rowStart + i * S.rowStep;
+        if (mx >= S.panel.x + 2 && mx <= S.panel.x + 2 + S.rowWidth && my >= rowY && my <= rowY + 42) {
+            inventoryStatHover = s;
+        }
+    });
+    if (inventoryStatHover && inventoryStatHover !== prev) {
+        for (let n = 0; n < 16; n++) {
+            fxParticles.push({
+                kind: "smoke",
+                x: mx + (Math.random() - 0.5) * 36,
+                y: my + (Math.random() - 0.5) * 14,
+                vx: (Math.random() - 0.5) * 1.1,
+                vy: -0.7 - Math.random() * 1.1,
+                life: 0.5 + Math.random() * 0.35,
+                size: 3 + Math.random() * 7,
+                color: `rgba(110,105,98,${0.2 + Math.random() * 0.18})`
+            });
+        }
+    }
+}
+
+function handleInventoryMouseLeave() {
+    if (state === "inventory") inventoryStatHover = null;
 }
 
 function handleCombatClick(mx, my) {
@@ -277,7 +373,8 @@ function updateUIButtons() {
             accountAuthPasswordInput = "";
             accountAuthMessage = "";
             mobileInput.blur();
-            changeState("char_select");
+            accountProfileMode = "gate";
+            changeState("account_profile");
         });
     }
     if (state === "account_login") {
@@ -300,7 +397,8 @@ function updateUIButtons() {
             accountAuthPasswordInput = "";
             accountAuthMessage = "";
             mobileInput.blur();
-            changeState("char_select");
+            accountProfileMode = "gate";
+            changeState("account_profile");
         });
     }
     if (state === "account_nickname") {
@@ -320,32 +418,29 @@ function updateUIButtons() {
             createButton(x, y, 170, 40, "char_select", "SELECT", COLORS.BTN_BLUE, () => {
                 selectedChar = c;
                 prepareNewRunFromClassSelect();
-                accountProfileExit = "first_combat";
-                continueFromAccountProfile();
+                startLevel(1);
+                if (typeof bgVideo !== 'undefined') bgVideo.play();
             });
         });
     }
     if (state === "account_profile") {
         if (accountProfileMode === "browse") {
-            createButton(400, 590, 180, 40, "account_profile", "CLOSE", COLORS.GRAY, () => {
+            const accLayout = getAccountProfileLayout();
+            createButton(accLayout.closeBtn.x, accLayout.closeBtn.y, accLayout.closeBtn.w, accLayout.closeBtn.h, "account_profile", "\u00D7", COLORS.GRAY, () => {
                 changeState(accountProfileReturnState);
             });
-            createButton(170, 590, 180, 40, "account_profile", "LOG OUT", COLORS.RED, () => {
+            createButton(260, 590, 180, 40, "account_profile", "LOG OUT", COLORS.DIM_GRAY, () => {
                 performLogoutToAuth();
             });
             if (getPortraitApiUrl()) {
-                createButton(600, 590, 200, 40, "account_profile", "REGENERATE", COLORS.BTN_BLUE, () => regenerateAccountPortrait());
+                createButton(520, 590, 200, 40, "account_profile", "REGENERATE", COLORS.BTN_BLUE, () => regenerateAccountPortrait());
             }
         } else {
-            createButton(400, 590, 200, 40, "account_profile", "CONTINUE", COLORS.GREEN, () => continueFromAccountProfile());
-            createButton(160, 590, 140, 40, "account_profile", "BACK", COLORS.GRAY, () => {
-                if (accountProfileExit === "first_combat") changeState("char_select");
-                else changeState("camp");
-            });
+            createButton(300, 588, 360, 44, "account_profile", "CONTINUE TO GAME", COLORS.GREEN, () => continueFromAccountProfile());
             if (getPortraitApiUrl()) {
-                createButton(620, 590, 200, 40, "account_profile", "REGENERATE", COLORS.BTN_BLUE, () => regenerateAccountPortrait());
+                createButton(40, 588, 200, 44, "account_profile", "REGENERATE", COLORS.BTN_BLUE, () => regenerateAccountPortrait());
             }
-            createButton(20, 590, 130, 40, "account_profile", "LOG OUT", COLORS.RED, () => {
+            createButton(680, 588, 160, 44, "account_profile", "LOG OUT", COLORS.DIM_GRAY, () => {
                 performLogoutToAuth();
             });
         }
@@ -410,7 +505,12 @@ function updateUIButtons() {
                             player[k] = (player[k] === selectedInvItem) ? null : selectedInvItem;
                         }
                         calcStats();
+                        const wasEquip = !isEq;
                         selectedInvItem = null;
+                        if (wasEquip) {
+                            AudioEngine.playEquipClank();
+                            shake = 7;
+                        }
                     });
                 }
 
@@ -599,6 +699,12 @@ window.addEventListener('keydown', e => {
 
 function changeState(s) {
     if (state === s) return;
+    if (state === "account_profile" && s !== "account_profile") {
+        accountRoadmapHover = null;
+    }
+    if (state === "inventory" && s !== "inventory") {
+        inventoryStatHover = null;
+    }
     AudioEngine.playTransition();
     isTransitioning = true;
     nextState = s;
@@ -674,7 +780,13 @@ function gameLoop() {
                 p.vx *= p.friction;
                 p.vy *= p.friction;
             }
-            p.life -= 0.02;
+            if (p.kind === "smoke") {
+                p.vx *= 0.97;
+                p.vy *= 0.98;
+                p.life -= 0.018;
+            } else {
+                p.life -= 0.02;
+            }
             if (p.life <= 0) fxParticles.splice(i, 1);
         }
 

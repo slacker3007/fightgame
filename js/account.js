@@ -512,4 +512,7 @@ function awardAccountXpForStageClear(stage, isGauntletComplete) {
 loadLocalAccount();
 if (!hasActiveAccountSession()) {
     state = 'account_auth';
+} else {
+    state = 'account_profile';
+    accountProfileMode = 'gate';
 }

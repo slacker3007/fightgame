@@ -1,13 +1,26 @@
 const COLORS = {
     WHITE: "#FFFFFF", BLACK: "#000000", RED: "#FF4646", GREEN: "#46FF46",
     GRAY: "#646464", GOLD: "#FFD700", YELLOW: "#FFFF00",
+    /** Account profile / premium HUD (hybrid dark + readable) */
+    UI_GOLD: "#c9a44a",
+    UI_SLATE: "#5c6478",
+    UI_AMBER: "#e8a838",
+    UI_MUTED_TEXT: "#9aa4b8",
+    UI_TITLE: "#f2ede3",
     DARK_BG: "#0a0a0f", CYAN: "#00FFFF", PANEL: "rgba(40, 40, 60, 0.95)",
     ENEMY_PANEL: "rgba(60, 40, 40, 0.85)", LOG_BG: "rgba(5, 5, 10, 0.9)",
     SLOT_BG: "rgba(20, 20, 30, 0.9)", RARITY_COMMON: "#FFFFFF", RARITY_RARE: "#46A0FF",
     RARITY_EPIC: "#A335EE", RARITY_LEGENDARY: "#FF8C00", BTN_BLUE: "#005a8c",
     BLOOD_RED: "#8a0303", TARNISHED_GOLD: "#b8860b", DIM_GRAY: "#4a4a4a", CREAM: "#FFF5DC",
     STAT_GOLD: "#f0d440", STAT_VALUE: "#ffffff", STAT_CYAN: "#46ffff",
-    STAT_ROW_BG: "rgba(40, 30, 20, 0.6)", STAT_BTN_BG: "rgba(20, 20, 20, 0.8)"
+    STAT_ROW_BG: "rgba(40, 30, 20, 0.6)", STAT_BTN_BG: "rgba(20, 20, 20, 0.8)",
+    CHAMPION_STAT_BASE: "#f2ede3",
+    CHAMPION_STAT_ACCOUNT: "#6ecf7a",
+    CHAMPION_STAT_GEAR: "#7ab8ff",
+    CHAMPION_PANEL_GLASS: "rgba(14, 12, 22, 0.72)",
+    CHAMPION_IRON_OUTER: "rgba(42, 38, 36, 0.95)",
+    CHAMPION_IRON_MID: "rgba(92, 78, 62, 0.85)",
+    CHAMPION_IRON_HIGHLIGHT: "rgba(160, 148, 128, 0.35)"
 };
 
 const ZONE_NAMES = { "1": "Head", "2": "Chest", "3": "Stomach", "4": "Belt", "5": "Legs" };

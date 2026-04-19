@@ -2,9 +2,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 let state = "account_auth", userName = "", score = 0, currentLvl = 1, maxLvl = 1;
-/** "first_combat" after class pick; "battle_select" from camp BATTLE */
-let accountProfileExit = "first_combat";
-/** "gate" = pre-battle flow with CONTINUE; "browse" = opened from header, CLOSE returns. */
+/** "gate" = hub after login/refresh; "browse" = opened from header, CLOSE returns. */
 let accountProfileMode = "gate";
 /** State to restore when closing browse-mode account profile. */
 let accountProfileReturnState = "camp";
@@ -29,6 +27,12 @@ let combatFlashes = [];
 let combatVignette = 0;
 let highScores = JSON.parse(localStorage.getItem('gauntletScores')) || [];
 let hoveredItem = null, selectedInvItem = null, tooltipPos = { x: 0, y: 0 };
+/** Champion screen: hovered stat key for tooltip, or null */
+let inventoryStatHover = null;
+let inventoryHoverPt = { x: 0, y: 0 };
+/** Account profile roadmap: mouse hover hit `{ kind:'major', milestone }` or `{ kind:'minor', level }`, else null */
+let accountRoadmapHover = null;
+let accountRoadmapHoverPt = { x: 0, y: 0 };
 let craftedItem = null;
 let craftingAnimTimer = 0;
 let pendingCraftedItem = null;
@@ -128,6 +132,9 @@ const ZONE_MAPPING = {
     "5": "assets/hit_zone_feet.png"
 };
 Object.keys(ZONE_MAPPING).forEach(id => loadAsset(`icon_${id}`, ZONE_MAPPING[id]));
+["weapon", "helm", "shield", "gloves", "armor", "boots", "ring", "necklace", "banner"].forEach(slotId => {
+    loadAsset(`equip_slot_${slotId}`, `assets/equip_slot_${slotId}.png`);
+});
 ALL_ITEMS.forEach(item => loadAsset(item.name, `assets/${item.name.toLowerCase().replace(/ /g, '_')}.png`));
 
 let levelUpTimer = 0;
