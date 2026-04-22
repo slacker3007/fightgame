@@ -1,0 +1,26 @@
+Gauntlet balance pass (mid-core target)
+======================================
+
+Combat
+------
+- Player dodge (DEX) and enemy dodge now apply in resolveTurn: failed blocks can
+  be partially negated by player.dodge; successful player hits can be negated by
+  enemy.dodge (God Strike still ignores enemy block; it also ignores enemy dodge).
+- Score breakdown includes Dodges (+30 each, same weight as blocks).
+
+Simulation (node scripts/balance-sim.js)
+----------------------------------------
+- Policies: random (lower bound), weighted (archetype priors only), oracle_* (hidden
+  info ceilings — not achievable in UI since nextAtk is not shown).
+- After tuning, weighted + scaled profile shows low but non-zero wins on early
+  tier-10 walls (e.g. ~5–9% around stage 20); late supreme stages remain ~0% for
+  this heuristic — intended for “stage 100 is a real achievement” with human
+  learning, camp upgrades, and real gear exceeding the sim’s rough curve.
+
+Tuning applied (js/data.js, js/logic.js)
+----------------------------------------
+- AETHELGARD base 1050 HP / 72 dmg (was 1200/85).
+- TIER_DMG_MUL curve softened at high tiers.
+- TIER_HP_MUL top two tiers 3.85× / 4.75× (was 4× / 5×).
+- Player max HP: 100 + STA×16 (was ×15).
+- Craft ore cost: 9 (was 10).

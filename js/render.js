@@ -714,10 +714,14 @@ function buildChampionStatTooltip(stat) {
     const T = player.total;
     const epicCh = 0.05 + (T.LUCK * 0.01);
     const rareCh = 0.15 + (T.LUCK * 0.02);
-    const dodgePct = Math.round(Math.min(0.6, T.DEX * 0.02) * 100);
-    const critPct = Math.round(Math.min(0.5, T.LUCK * 0.03) * 100);
+    let dodgeShow = Math.min(0.6, T.DEX * 0.02);
+    if (player.baseDEX >= 15) dodgeShow += 0.1;
+    const dodgePct = Math.round(dodgeShow * 100);
+    let critShow = Math.min(0.5, T.LUCK * 0.03);
+    if (player.baseDEX >= 15) critShow += 0.1;
+    const critPct = Math.round(critShow * 100);
     const baseDmg = 10 + T.STR * 4;
-    const hp = 100 + T.STA * 15;
+    const hp = 100 + T.STA * 16;
     if (stat === "STR") {
         return {
             title: "STR — Strike power",
@@ -732,7 +736,7 @@ function buildChampionStatTooltip(stat) {
         return {
             title: "DEX — Evasion",
             lines: [
-                `Dodge chance ≈ ${dodgePct}% (capped at 60%, DEX×2% per point).`,
+                `Dodge ≈ ${dodgePct}% when a strike would hit (after your blocks); capped at 60% from DEX, plus DEX 15+ bonus.`,
                 player.baseDEX >= 15 ? "DEX 15+: +10% dodge and +10% crit chance." : "Reach base DEX 15 for extra dodge and crit."
             ]
         };
@@ -741,7 +745,7 @@ function buildChampionStatTooltip(stat) {
         return {
             title: "STA — Vitality",
             lines: [
-                `Max HP = ${hp} (100 + STA×15).`,
+                `Max HP = ${hp} (100 + STA×16).`,
                 player.baseSTA >= 15 ? "STA 15+: when a hit gets through, reduce it by 20%." : "Reach base STA 15 for damage reduction."
             ]
         };
@@ -2475,9 +2479,9 @@ function drawEnd() {
     ctx.fillText(`${scoreDetails.stageClear}`, 660, 175);
     
     ctx.textAlign = "left";
-    ctx.fillText(`Combat (Hits/Crits/Blocks):`, 300, 205);
+    ctx.fillText(`Combat (Hits/Crits/Blocks/Dodges):`, 300, 205);
     ctx.textAlign = "right";
-    const combatScore = (scoreDetails.hits * 20) + (scoreDetails.crits * 30) + (scoreDetails.blocks * 30); // Crits already counted as hits
+    const combatScore = (scoreDetails.hits * 20) + (scoreDetails.crits * 30) + (scoreDetails.blocks * 30) + ((scoreDetails.dodges || 0) * 30);
     ctx.fillText(`${combatScore}`, 660, 205);
     
     ctx.textAlign = "left";

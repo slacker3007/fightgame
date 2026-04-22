@@ -16,7 +16,7 @@ let accountAuthBusy = false;
 let accountAuthActiveField = "nickname";
 /** Persistent meta; owned by js/account.js (localStorage, future cloud). */
 let accountXp = 0, accountLevel = 1;
-let scoreDetails = { hits: 0, crits: 0, blocks: 0, hpBonus: 0, stageClear: 0 };
+let scoreDetails = { hits: 0, crits: 0, blocks: 0, dodges: 0, hpBonus: 0, stageClear: 0 };
 let player = {}, enemy = {}, log = [];
 let selAtk = null, selBlk = [], isProcessing = false;
 let pDisplayHp = 0, eDisplayHp = 0, fDisplayFury = 0, shake = 0, particles = [], fxParticles = [];

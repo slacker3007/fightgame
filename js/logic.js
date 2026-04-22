@@ -56,7 +56,7 @@ function initPlayer(charType) {
     pDisplayHp = player.hp;
     log = [];
     inventoryError = false;
-    scoreDetails = { hits: 0, crits: 0, blocks: 0, hpBonus: 0, stageClear: 0 };
+    scoreDetails = { hits: 0, crits: 0, blocks: 0, dodges: 0, hpBonus: 0, stageClear: 0 };
     addLog(`Welcome, ${charType} Champion.`, COLORS.TARNISHED_GOLD);
 }
 
@@ -101,7 +101,7 @@ function calcStats() {
         player.total[s] = player["base" + s] + player.accountBonus[s] + player.bonus[s];
     });
 
-    player.maxHp = 100 + (player.total.STA * 15);
+    player.maxHp = 100 + (player.total.STA * 16);
     player.dmg = 10 + (player.total.STR * 4);
     player.dodge = Math.min(0.60, player.total.DEX * 0.02);
     player.crit = Math.min(0.50, player.total.LUCK * 0.03);
@@ -340,6 +340,15 @@ async function resolveTurn() {
         spawnEnemyBlockSparks();
         combatFlashes.push({ target: "enemy", type: "enemyBlock", life: 1 });
     } else {
+        const enemyEvaded = !useGodStrike && Math.random() < enemy.dodge;
+        if (enemyEvaded) {
+            AudioEngine.playBlock();
+            addLog(`Enemy EVADED your strike!`, COLORS.DIM_GRAY);
+            spawnText("EVADED", 750, 300, COLORS.YELLOW);
+            shake = 4;
+            spawnEnemyBlockSparks();
+            combatFlashes.push({ target: "enemy", type: "enemyBlock", life: 1 });
+        } else {
         const crit = useGodStrike || (Math.random() < player.crit);
         if (useGodStrike) AudioEngine.playGodStrike();
         else if (crit) AudioEngine.playCrit();
@@ -377,6 +386,7 @@ async function resolveTurn() {
         }
 
         if (!useGodStrike) player.fury = Math.min(player.maxFury, player.fury + 15);
+        }
     }
 
     await waitResolveMidTurnPause();
@@ -390,6 +400,16 @@ async function resolveTurn() {
             shake = 2;
             player.fury = Math.min(player.maxFury, player.fury + 10);
             scoreDetails.blocks++;
+            score += 30;
+            spawnPlayerParryStreaks();
+            combatFlashes.push({ target: "player", type: "parry", life: 1 });
+        } else if (Math.random() < player.dodge) {
+            AudioEngine.playBlock();
+            addLog(`You dodged the ${ZONE_NAMES[eAtk]} strike!`, COLORS.CYAN);
+            spawnText("DODGE", 180, 300, COLORS.CYAN);
+            shake = 2;
+            player.fury = Math.min(player.maxFury, player.fury + 10);
+            scoreDetails.dodges++;
             score += 30;
             spawnPlayerParryStreaks();
             combatFlashes.push({ target: "player", type: "parry", life: 1 });
@@ -490,7 +510,7 @@ function craftItem() {
         return;
     }
 
-    const COST = 10;
+    const COST = 9;
     if (player.ore < COST) {
         addLog(`Need ${COST} Ore!`, COLORS.BLOOD_RED);
         spawnText("NEED ORE", 480, 325, COLORS.RED);

@@ -35,7 +35,8 @@ const ENEMY_DATA = [
     ["Blood-Oath Duelist", 220, 35, 0.15, "agile", 6],
     ["Ruin-Knight Exemplar", 400, 45, 0.05, "heavy", 7],
     ["Void-General Malakor", 500, 55, 0.15, "agile", 8],
-    ["AETHELGARD", 1200, 85, 0.10, "boss", 9]
+    /** Finale boss: tuned down from 1200/85 so tier scaling does not two-shot mid-gauntlet builds. */
+    ["AETHELGARD", 1050, 72, 0.10, "boss", 9]
 ];
 
 const GAUNTLET_TOTAL_STAGES = 100;
@@ -89,9 +90,10 @@ const TIER_LABELS = [
     "Nightmare", "Inferno", "Torment", "Annihilation", "Supreme"
 ];
 
-/** Per-tier multipliers; tier 0 is 1× so stages 1–10 match legacy balance. */
-const TIER_HP_MUL = [1, 1.18, 1.4, 1.65, 1.95, 2.3, 2.75, 3.3, 4, 5];
-const TIER_DMG_MUL = [1, 1.12, 1.26, 1.42, 1.6, 1.82, 2.08, 2.4, 2.8, 3.3];
+/** Per-tier multipliers; tier 0 is 1×. Top HP tiers below legacy 4×/5× for mid-core pacing. */
+const TIER_HP_MUL = [1, 1.18, 1.4, 1.65, 1.95, 2.3, 2.75, 3.3, 3.85, 4.75];
+/** Late tiers softened (was 2.4 / 2.8 / 3.3) for mid-core: skilled play can stabilize without lottery one-shots. */
+const TIER_DMG_MUL = [1, 1.12, 1.26, 1.42, 1.58, 1.76, 1.98, 2.22, 2.48, 2.75];
 const TIER_DODGE_MUL = [1, 1.05, 1.08, 1.1, 1.12, 1.14, 1.16, 1.18, 1.2, 1.22];
 
 function getGauntletTier(stage) {
@@ -110,6 +112,8 @@ function getBattleSelectTierStart(maxLvl) {
 
 /** Stages 11–20 (Normal tier) were undertuned; +50% to hp, dmg, and dodge scaling. */
 const NORMAL_TIER_STAGE_BOOST = 1.5;
+/** Slot-10 finales in that band (stage 20 only): no Normal-tier band multiplier (1× tier scaling only). */
+const NORMAL_TIER_STAGE_BOSS_BOOST = 1.0;
 
 function getScaledEnemyForStage(stage) {
     const slot = getBossSlot(stage);
@@ -118,7 +122,10 @@ function getScaledEnemyForStage(stage) {
     const hpM = TIER_HP_MUL[t];
     const dmgM = TIER_DMG_MUL[t];
     const dodgeM = TIER_DODGE_MUL[t];
-    const normalBlockBoost = stage >= 11 && stage <= 20 ? NORMAL_TIER_STAGE_BOOST : 1;
+    const inNormalBand = stage >= 11 && stage <= 20;
+    const normalBlockBoost = inNormalBand
+        ? (slot === 10 ? NORMAL_TIER_STAGE_BOSS_BOOST : NORMAL_TIER_STAGE_BOOST)
+        : 1;
     const baseName = d[0];
     const label = TIER_LABELS[t];
     return {
