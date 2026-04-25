@@ -15,6 +15,7 @@
  * CORS: proxy must send Access-Control-Allow-Origin for your game origin (or *).
  */
 const PORTRAIT_API_URL = '';
+const PORTRAIT_ALLOWED_PROTOCOLS = new Set(['https:', 'http:']);
 
 let portraitStatus = 'idle';
 let portraitDisplayImage = null;
@@ -32,6 +33,16 @@ function getPortraitApiUrl() {
 
 function buildPortraitCacheKey(nick, classKey, level) {
     return `${nick}|${classKey}|${level}`;
+}
+
+function isAllowedRemoteImageUrl(rawUrl) {
+    if (typeof rawUrl !== 'string' || !rawUrl.trim()) return false;
+    try {
+        const parsed = new URL(rawUrl, window.location.href);
+        return PORTRAIT_ALLOWED_PROTOCOLS.has(parsed.protocol);
+    } catch (_err) {
+        return false;
+    }
 }
 
 function blobToDataUrl(blob) {
@@ -60,6 +71,12 @@ function applyCachedImage(cache, cacheKeyForFail) {
         return;
     }
     if (cache.imageUrl) {
+        if (!isAllowedRemoteImageUrl(cache.imageUrl)) {
+            portraitStatus = 'error';
+            portraitDisplayImage = null;
+            portraitFailedKey = cacheKeyForFail || '';
+            return;
+        }
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
@@ -135,7 +152,7 @@ function tickAccountPortrait(classKey) {
             if (ct.includes('application/json')) {
                 const j = await res.json();
                 const imageUrl = j.imageUrl || j.url || j.image;
-                if (!imageUrl || typeof imageUrl !== 'string') throw new Error('no image url');
+                if (!isAllowedRemoteImageUrl(imageUrl)) throw new Error('invalid image url');
                 setPortraitCache({ key, imageUrl });
                 const img = new Image();
                 img.crossOrigin = 'anonymous';

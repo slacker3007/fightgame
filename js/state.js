@@ -25,7 +25,6 @@ const COMBAT_PLAYER_SPRITE = { x: 20, y: 130, w: 350, h: 350 };
 const COMBAT_ENEMY_SPRITE = { x: 590, y: 130, w: 350, h: 350 };
 let combatFlashes = [];
 let combatVignette = 0;
-let highScores = JSON.parse(localStorage.getItem('gauntletScores')) || [];
 let hoveredItem = null, selectedInvItem = null, tooltipPos = { x: 0, y: 0 };
 /** Champion screen: hovered stat key for tooltip, or null */
 let inventoryStatHover = null;
@@ -56,8 +55,6 @@ function getAutoplayTipLayout() {
         neverAgain: { x: x + 188, y: btnY, w: 404, h: btnH }
     };
 }
-
-let isFetchingScores = false;
 
 // Loading State Variables
 let assetsLoaded = 0;

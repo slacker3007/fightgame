@@ -2746,47 +2746,21 @@ function drawEnd() {
 
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 24px 'Pirata One'";
-    ctx.fillText("GLOBAL LEADERBOARD", 480, 355);
-    
-    if (isFetchingScores && highScores.length === 0) {
-        ctx.fillStyle = COLORS.CYAN; ctx.font = "italic 18px Ubuntu";
-        ctx.fillText("Synchronizing with scrolls...", 480, 400);
-    } else {
-        highScores.slice(0, 3).forEach((s, i) => {
-            const y = 385 + i * 32;
-            
-            // Draw background bar for each entry
-            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-            ctx.fillRect(330, y - 22, 300, 28);
-            
-            // Rank Number / Symbol
-            let rankCol = COLORS.WHITE;
-            if (i === 0) rankCol = COLORS.GOLD;
-            else if (i === 1) rankCol = "#C0C0C0"; // Silver
-            else if (i === 2) rankCol = "#CD7F32"; // Bronze
-            
-            ctx.fillStyle = rankCol;
-            ctx.font = "bold 18px Ubuntu";
-            ctx.textAlign = "right";
-            ctx.fillText(`${i + 1}.`, 360, y - 5);
-            
-            // Name
-            ctx.textAlign = "left";
-            ctx.fillStyle = COLORS.CREAM;
-            ctx.fillText(s.name.toUpperCase(), 375, y - 5);
-            
-            // Score
-            ctx.textAlign = "right";
-            ctx.fillStyle = rankCol;
-            ctx.fillText(s.score.toLocaleString(), 620, y - 5);
-        });
-        
-        if (isFetchingScores) {
-            ctx.fillStyle = COLORS.CYAN; ctx.font = "12px Ubuntu";
-            ctx.textAlign = "center";
-            ctx.fillText("Updating...", 480, 560);
-        }
-    }
+    ctx.fillText("SCOREBOARD OFFLINE", 480, 355);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.fillRect(330, 363, 300, 112);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(330, 363, 300, 112);
+
+    ctx.fillStyle = COLORS.CREAM;
+    ctx.font = "bold 18px Ubuntu";
+    ctx.fillText("Top scores are disabled.", 480, 405);
+    ctx.font = "15px Ubuntu";
+    ctx.fillStyle = COLORS.CYAN;
+    ctx.fillText("Runs still show your total score.", 480, 432);
+    ctx.fillText("No local or online score sync.", 480, 456);
     uiButtons.forEach(btn => btn.state === state && drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color));
 }
 

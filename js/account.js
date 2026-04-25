@@ -13,6 +13,8 @@ const ACCOUNT_XP_STAGE_BASE = 8;
 const ACCOUNT_XP_STAGE_PER_LEVEL = 2;
 /** Extra account XP when the full gauntlet is completed. */
 const ACCOUNT_XP_GAUNTLET_COMPLETE_BONUS = 250;
+const ACCOUNT_PASSWORD_PBKDF2_ITERATIONS = 210000;
+const ACCOUNT_PASSWORD_SALT_BYTES = 16;
 const PASSIVE_MILESTONE_FIRST_LEVEL = 5;
 const PASSIVE_MILESTONE_STEP = 10;
 
@@ -334,12 +336,34 @@ function isAccountNameTaken(nickname) {
     return !!key && !!accountStore.accounts[key];
 }
 
-async function hashPasswordSha256(password) {
+function bytesToHex(bytes) {
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBytes(hex) {
+    if (typeof hex !== 'string' || (hex.length % 2) !== 0) return null;
+    const out = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+        const v = parseInt(hex.slice(i, i + 2), 16);
+        if (!Number.isFinite(v)) return null;
+        out[i / 2] = v;
+    }
+    return out;
+}
+
+function timingSafeEqualHex(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= (a.charCodeAt(i) ^ b.charCodeAt(i));
+    return diff === 0;
+}
+
+async function hashPasswordLegacy(password) {
     const text = String(password || '');
     if (window.crypto && window.crypto.subtle && window.TextEncoder) {
         const bytes = new TextEncoder().encode(text);
         const digest = await window.crypto.subtle.digest('SHA-256', bytes);
-        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        return bytesToHex(new Uint8Array(digest));
     }
     // Fallback for old runtimes without subtle crypto.
     let h = 2166136261 >>> 0;
@@ -350,13 +374,69 @@ async function hashPasswordSha256(password) {
     return `fnv1a-${h.toString(16)}`;
 }
 
+function hasPbkdf2Support() {
+    return !!(window.crypto && window.crypto.subtle && window.crypto.getRandomValues && window.TextEncoder);
+}
+
+async function hashPasswordPbkdf2(password, saltBytes, iterations) {
+    const text = String(password || '');
+    const keyMaterial = await window.crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(text),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits']
+    );
+    const bits = await window.crypto.subtle.deriveBits(
+        {
+            name: 'PBKDF2',
+            salt: saltBytes,
+            iterations,
+            hash: 'SHA-256'
+        },
+        keyMaterial,
+        256
+    );
+    return bytesToHex(new Uint8Array(bits));
+}
+
+async function createPasswordHash(password) {
+    if (!hasPbkdf2Support()) return hashPasswordLegacy(password);
+    const saltBytes = window.crypto.getRandomValues(new Uint8Array(ACCOUNT_PASSWORD_SALT_BYTES));
+    const hashHex = await hashPasswordPbkdf2(password, saltBytes, ACCOUNT_PASSWORD_PBKDF2_ITERATIONS);
+    return `pbkdf2$${ACCOUNT_PASSWORD_PBKDF2_ITERATIONS}$${bytesToHex(saltBytes)}$${hashHex}`;
+}
+
+async function verifyPasswordHash(password, storedHash) {
+    const stored = typeof storedHash === 'string' ? storedHash : '';
+    if (!stored) return { ok: false, shouldUpgrade: false };
+
+    if (stored.startsWith('pbkdf2$')) {
+        const parts = stored.split('$');
+        if (parts.length !== 4) return { ok: false, shouldUpgrade: false };
+        const iterations = parseInt(parts[1], 10);
+        const saltBytes = hexToBytes(parts[2]);
+        const expectedHashHex = parts[3];
+        if (!Number.isFinite(iterations) || iterations < 1000 || !saltBytes || !expectedHashHex) {
+            return { ok: false, shouldUpgrade: false };
+        }
+        if (!hasPbkdf2Support()) return { ok: false, shouldUpgrade: false };
+        const actualHashHex = await hashPasswordPbkdf2(password, saltBytes, iterations);
+        const shouldUpgrade = iterations < ACCOUNT_PASSWORD_PBKDF2_ITERATIONS;
+        return { ok: timingSafeEqualHex(actualHashHex, expectedHashHex), shouldUpgrade };
+    }
+
+    const legacyHash = await hashPasswordLegacy(password);
+    return { ok: timingSafeEqualHex(legacyHash, stored), shouldUpgrade: true };
+}
+
 async function registerLocalAccount(nickname, password) {
     const cleanNick = clampNickname(nickname);
     if (!cleanNick) return { ok: false, error: 'Name is required.' };
     if (String(password || '').length < 4) return { ok: false, error: 'Password must be at least 4 chars.' };
     const key = normalizeNicknameKey(cleanNick);
     if (accountStore.accounts[key]) return { ok: false, error: 'Name is already registered.' };
-    const hash = await hashPasswordSha256(password);
+    const hash = await createPasswordHash(password);
     const record = createDefaultAccountRecord(cleanNick, hash);
     accountStore.accounts[key] = record;
     accountStore.activeNicknameKey = key;
@@ -370,13 +450,13 @@ async function loginLocalAccount(nickname, password) {
     const key = normalizeNicknameKey(cleanNick);
     if (!key || !accountStore.accounts[key]) return { ok: false, error: 'Account not found.' };
     const record = sanitizeAccountRecord(accountStore.accounts[key], cleanNick);
-    const hash = await hashPasswordSha256(password);
-    if (record.passwordHash && record.passwordHash !== hash) {
+    const verify = await verifyPasswordHash(password, record.passwordHash);
+    if (record.passwordHash && !verify.ok) {
         return { ok: false, error: 'Invalid password.' };
     }
-    if (!record.passwordHash) {
-        // Upgrade migrated legacy account on first login.
-        record.passwordHash = hash;
+    if (!record.passwordHash || verify.shouldUpgrade) {
+        // Upgrade migrated or legacy records on successful login.
+        record.passwordHash = await createPasswordHash(password);
     }
     accountStore.accounts[key] = record;
     accountStore.activeNicknameKey = key;
