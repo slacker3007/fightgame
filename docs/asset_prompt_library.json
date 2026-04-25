@@ -1,0 +1,205 @@
+{
+  "_meta": {
+    "art_bible_version": "1",
+    "intended_tool": "Gemini Image MCP tool generate_image",
+    "mcp_server_id": "project-0-fightgame-gemini-image",
+    "local_bridge": "mcp/gemini-image-bridge/server.mjs",
+    "env": {
+      "GEMINI_API_KEY": "required",
+      "GEMINI_IMAGE_MODEL": "optional; default gemini-2.5-flash-image"
+    },
+    "mcp_call_defaults": {
+      "output_directory": "C:/Users/Mooncake/Documents/GitHub/fightgame/assets",
+      "force_conversion_type": "png",
+      "skip_compression_and_resizing": true
+    },
+    "generation_status": "MCP image calls returned HTTP 429 (free-tier quota 0 for gemini-2.5-flash-preview-image billing bucket). Full PNG redesign via MCP is pending quota/billing. Seven previously-missing common item icons were added using Cursor GenerateImage and copied into repo assets so check-asset-paths passes.",
+    "style_prefix": "Dark fantasy game UI asset, painterly clean controlled detail, silhouette-first readability, high contrast, top-left key light, deep shadow bottom-right, minimal palette (2–3 dominant colors), glow only as restrained accent, same world style as sibling assets, no text, no watermark, no logos.",
+    "negative_global": "photorealistic, film grain, heavy noise, blur, watermark, logo, UI screenshot, illegible micro-detail, cluttered background for icons"
+  },
+  "anchors": {
+    "mystery_box_0": {
+      "purpose": "Rust chest (tier 0)",
+      "prompt": "Fantasy chest icon, rust material #6A3F2A, corroded worn rough surface, low-tier simple construction, strong centered front silhouette, transparent background."
+    },
+    "mystery_box_5": {
+      "purpose": "Void chest (tier 5)",
+      "prompt": "Fantasy chest icon, void material near-black #140F1F, purple rim glow #7A5CFF, cracked seams with controlled arcane energy, unnatural rim light, strongest tier, transparent background."
+    },
+    "gold": {
+      "purpose": "Currency icon",
+      "prompt": "Stylized gold coin stack icon, bold simple silhouette, rich gold #D4A84A, sharp specular streaks on metal, must read at 24px, centered, transparent background."
+    },
+    "player_STR": {
+      "purpose": "STR stat portrait/icon",
+      "prompt": "Armored clenched gauntlet icon, thick blocky angular forms, strength archetype, dominant silhouette, transparent background."
+    },
+    "equip_slot_weapon": {
+      "purpose": "Weapon slot empty frame",
+      "prompt": "Empty fantasy UI slot frame, metallic border, angular silhouette, subtle unified glow family, clean interior for item readability, transparent background."
+    }
+  },
+  "chests": {
+    "mystery_box_1": {
+      "purpose": "Iron chest",
+      "prompt": "Fantasy chest icon, iron #4A4F57, dark metal bands, practical simple build, stronger than rust, transparent background."
+    },
+    "mystery_box_2": {
+      "purpose": "Steel chest",
+      "prompt": "Fantasy chest icon, steel #6B737C, cleaner metal, sharper edges, mid-tier, transparent background."
+    },
+    "mystery_box_3": {
+      "purpose": "Silver chest",
+      "prompt": "Fantasy chest icon, silver #C9D1D9, bright highlights, subtle premium glow, transparent background."
+    },
+    "mystery_box_4": {
+      "purpose": "Gold chest",
+      "prompt": "Fantasy chest icon, gold #D4A84A, warm glow accents, ornate high-value craftsmanship, transparent background."
+    }
+  },
+  "player_stats": {
+    "player_DEX": {
+      "purpose": "DEX stat icon",
+      "prompt": "Sleek curved dagger icon, tapered fast silhouette, sharp tips, dexterity archetype, transparent background."
+    },
+    "player_STA": {
+      "purpose": "STA stat icon",
+      "prompt": "Heavy rounded shield-core icon, stable mass, stamina archetype, transparent background."
+    },
+    "player_luck": {
+      "purpose": "LUCK stat icon",
+      "prompt": "Chaotic luck icon, asymmetrical warped coin or glowing dice motif, irregular silhouette, restrained arcane accent #7A5CFF, transparent background."
+    }
+  },
+  "equip_slot_frames": {
+    "equip_slot_helm": { "prompt": "Empty UI slot frame, metallic border, rounded-top helm silhouette, subtle glow, clean interior, transparent background." },
+    "equip_slot_shield": { "prompt": "Empty UI slot frame, metallic border, wide shield silhouette, subtle glow, clean interior, transparent background." },
+    "equip_slot_gloves": { "prompt": "Empty UI slot frame, metallic border, split gloves silhouette, subtle glow, clean interior, transparent background." },
+    "equip_slot_armor": { "prompt": "Empty UI slot frame, metallic border, chestplate contour silhouette, subtle glow, clean interior, transparent background." },
+    "equip_slot_boots": { "prompt": "Empty UI slot frame, metallic border, bottom-heavy boots silhouette, subtle glow, clean interior, transparent background." },
+    "equip_slot_ring": { "prompt": "Empty UI slot frame, metallic border, circular ring silhouette, subtle glow, clean interior, transparent background." },
+    "equip_slot_necklace": { "prompt": "Empty UI slot frame, metallic border, hanging arc necklace silhouette, subtle glow, clean interior, transparent background." },
+    "equip_slot_banner": { "prompt": "Empty UI slot frame, metallic border, vertical banner standard silhouette, subtle glow, clean interior, transparent background." }
+  },
+  "core_ui": {
+    "shop_bg": {
+      "purpose": "Shop screen backdrop (opaque)",
+      "prompt": "Dark fantasy merchant hall interior, stone arches, deep shadows, warm torchlight, subtle arcane ambience, painterly clean, empty center for UI overlay, no characters.",
+      "mcp_notes": "Use opaque PNG/JPEG; transparent not required."
+    },
+    "camp_icon_shop": {
+      "purpose": "Camp shop nav icon",
+      "prompt": "Small fantasy merchant stall icon, cloth canopy, wooden frame, minimal detail, strong silhouette, transparent background."
+    },
+    "autoplay_button": {
+      "purpose": "Autoplay toggle",
+      "prompt": "Fantasy autoplay icon, triangular play symbol in subtle circular frame, clean edges, faint magical glow, transparent background."
+    }
+  },
+  "enemy": {
+    "enemy_lvl_2": {
+      "purpose": "Enemy art stage 2",
+      "prompt": "Dark fantasy humanoid enemy portrait, mid-tier armor (stage-2 threat), aggressive stance, bold silhouette, limited palette, transparent or simple dark backdrop per game pipeline."
+    }
+  },
+  "item_icons": {
+    "rusty_dagger": { "prompt": "Fantasy item icon, rusty dagger, worn blade, common tier, transparent background." },
+    "soldiers_sword": { "prompt": "Fantasy item icon, soldier's arming sword, practical steel, common, transparent background." },
+    "heavy_mace": { "prompt": "Fantasy item icon, heavy spiked mace, brutal silhouette, common, transparent background." },
+    "void_reaver": { "prompt": "Fantasy item icon, rare void-touched blade, purple arcane accent #7A5CFF, transparent background." },
+    "dragon_tooth": { "prompt": "Fantasy item icon, epic curved blade with draconic motif, restrained glow, transparent background." },
+    "leather_tunic": { "prompt": "Fantasy item icon, leather tunic armor, common, transparent background." },
+    "reinforced_garb": { "prompt": "Fantasy item icon, reinforced cloth armor, common, transparent background." },
+    "plate_mail": { "prompt": "Fantasy item icon, plate mail torso, heavy steel, common, transparent background." },
+    "ninja_suit": { "prompt": "Fantasy item icon, rare sleek ninja suit, dark cloth, transparent background." },
+    "dragon_scale": { "prompt": "Fantasy item icon, epic dragon scale mail, scaled texture, transparent background." },
+    "sunstrider_sword": { "prompt": "Fantasy item icon, legendary golden longsword, radiant warm accent #D4A84A, transparent background." },
+    "soulguard_plate": { "prompt": "Fantasy item icon, legendary ornate plate armor, solemn glow, transparent background." },
+    "buckler": { "prompt": "Fantasy item icon, small round buckler shield, wood and iron, common, transparent background." },
+    "iron_helm": { "prompt": "Fantasy item icon, simple iron helmet, common, transparent background." },
+    "leather_gloves": { "prompt": "Fantasy item icon, brown leather gloves, common, transparent background." },
+    "travel_boots": { "prompt": "Fantasy item icon, travel boots leather and buckles, common, transparent background." },
+    "copper_ring": { "prompt": "Fantasy item icon, simple copper ring band, common, transparent background." },
+    "bone_charm": { "prompt": "Fantasy item icon, bone charm necklace, primitive, common, transparent background." },
+    "tattered_standard": { "prompt": "Fantasy item icon, tattered war banner on pole, common, transparent background." },
+    "frostguard_helm": { "prompt": "Fantasy item icon, rare icy steel helm, ice accent #4DA6FF, transparent background." },
+    "warden_visor": { "prompt": "Fantasy item icon, epic heavy helm, glowing visor slits, etched detail, transparent background." },
+    "aegis_bulwark": { "prompt": "Fantasy item icon, rare large steel shield, subtle ice accent, transparent background." },
+    "bastion_ward": { "prompt": "Fantasy item icon, epic layered shield, glowing core cue, transparent background." },
+    "quickdraw_grips": { "prompt": "Fantasy item icon, rare light leather-metal gloves, transparent background." },
+    "shadowweave_gauntlets": { "prompt": "Fantasy item icon, epic dark gauntlets, purple arcane thread glow, transparent background." },
+    "trailrunner_boots": { "prompt": "Fantasy item icon, rare lightweight boots, streamlined, transparent background." },
+    "stormstep_greaves": { "prompt": "Fantasy item icon, epic armored greaves, restrained lightning accent, transparent background." },
+    "lucky_loop": { "prompt": "Fantasy item icon, rare simple ring, faint glow, transparent background." },
+    "astral_band": { "prompt": "Fantasy item icon, epic glowing ring with orbiting energy, transparent background." },
+    "runed_pendant": { "prompt": "Fantasy item icon, rare rune pendant, transparent background." },
+    "heartfire_talisman": { "prompt": "Fantasy item icon, epic pendant with fiery core #FF8A3C, transparent background." },
+    "ironbound_banner": { "prompt": "Fantasy item icon, rare heavy banner on iron rod, transparent background." },
+    "warleader_standard": { "prompt": "Fantasy item icon, epic ornate war banner with glowing symbol, transparent background." }
+  },
+  "debug": {
+    "debug_weapon": { "prompt": "Simple grayscale placeholder weapon icon, bold geometric silhouette, transparent background." },
+    "debug_armor": { "prompt": "Simple grayscale placeholder armor icon, bold geometric silhouette, transparent background." }
+  },
+  "batch_order_mcp": [
+    "mystery_box_0",
+    "mystery_box_5",
+    "gold",
+    "player_STR",
+    "equip_slot_weapon",
+    "mystery_box_1",
+    "mystery_box_2",
+    "mystery_box_3",
+    "mystery_box_4",
+    "player_DEX",
+    "player_STA",
+    "player_luck",
+    "equip_slot_helm",
+    "equip_slot_shield",
+    "equip_slot_gloves",
+    "equip_slot_armor",
+    "equip_slot_boots",
+    "equip_slot_ring",
+    "equip_slot_necklace",
+    "equip_slot_banner",
+    "shop_bg",
+    "camp_icon_shop",
+    "autoplay_button",
+    "enemy_lvl_2",
+    "rusty_dagger",
+    "soldiers_sword",
+    "heavy_mace",
+    "void_reaver",
+    "dragon_tooth",
+    "leather_tunic",
+    "reinforced_garb",
+    "plate_mail",
+    "ninja_suit",
+    "dragon_scale",
+    "sunstrider_sword",
+    "soulguard_plate",
+    "buckler",
+    "iron_helm",
+    "leather_gloves",
+    "travel_boots",
+    "copper_ring",
+    "bone_charm",
+    "tattered_standard",
+    "frostguard_helm",
+    "warden_visor",
+    "aegis_bulwark",
+    "bastion_ward",
+    "quickdraw_grips",
+    "shadowweave_gauntlets",
+    "trailrunner_boots",
+    "stormstep_greaves",
+    "lucky_loop",
+    "astral_band",
+    "runed_pendant",
+    "heartfire_talisman",
+    "ironbound_banner",
+    "warleader_standard",
+    "debug_weapon",
+    "debug_armor"
+  ]
+}

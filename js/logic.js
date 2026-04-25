@@ -6,6 +6,20 @@ function getMaxStat(charType, statName) {
     return (charType === statName) ? 15 : 10;
 }
 
+function maybeUnlockNextStatCapTier() {
+    const stats = ["STR", "DEX", "STA", "LUCK"];
+    const cappedCount = stats.reduce((count, stat) => {
+        return count + (player["base" + stat] >= player.maxStats[stat] ? 1 : 0);
+    }, 0);
+
+    if (cappedCount < 3) return false;
+
+    stats.forEach(stat => {
+        player.maxStats[stat] += 5;
+    });
+    return true;
+}
+
 function initPlayer(charType) {
     selectedChar = charType;
     let base = { STR: 2, DEX: 2, STA: 2, LUCK: 2 };
@@ -14,6 +28,10 @@ function initPlayer(charType) {
     if (charType === "LUCK") base.LUCK = 5;
     if (charType === "STA") base.STA = 5;
 
+    const extraSlots = {};
+    if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
+        for (const sid of ACCOUNT_EQUIP_SLOT_IDS) extraSlots[sid] = null;
+    }
     player = {
         baseSTR: base.STR, baseDEX: base.DEX, baseSTA: base.STA, baseLUCK: base.LUCK,
         maxStats: {
@@ -25,9 +43,11 @@ function initPlayer(charType) {
         hp: 0, maxHp: 0,
         fury: 0, maxFury: 100, isGodStrike: false,
         weapon: null, armor: null,
+        ...extraSlots,
         inventory: [],
-        ore: 0,
+        gold: 0,
         points: 0,
+        accountBonus: { STR: 0, DEX: 0, STA: 0, LUCK: 0 },
         bonus: { STR: 0, DEX: 0, STA: 0, LUCK: 0 },
         total: { STR: base.STR, DEX: base.DEX, STA: base.STA, LUCK: base.LUCK }
     };
@@ -36,13 +56,41 @@ function initPlayer(charType) {
     pDisplayHp = player.hp;
     log = [];
     inventoryError = false;
-    scoreDetails = { hits: 0, crits: 0, blocks: 0, hpBonus: 0, stageClear: 0 };
+    scoreDetails = { hits: 0, crits: 0, blocks: 0, dodges: 0, hpBonus: 0, stageClear: 0 };
     addLog(`Welcome, ${charType} Champion.`, COLORS.TARNISHED_GOLD);
+    if (typeof resetShopForNewRun === "function") resetShopForNewRun();
 }
 
 function calcStats() {
+    if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
+        for (const sid of ACCOUNT_EQUIP_SLOT_IDS) {
+            if (typeof isAccountSlotUnlocked === "function" && !isAccountSlotUnlocked(sid)) {
+                player[sid] = null;
+            }
+        }
+    }
+    if (player.mystery80 != null) player.mystery80 = null;
+    if (player.mystery90 != null) player.mystery90 = null;
+    if (player.mystery100 != null) player.mystery100 = null;
+    const accountBonus = typeof getAccountPermanentStatBonus === "function"
+        ? getAccountPermanentStatBonus()
+        : { STR: 0, DEX: 0, STA: 0, LUCK: 0 };
+    player.accountBonus = {
+        STR: Math.max(0, Math.floor(accountBonus.STR || 0)),
+        DEX: Math.max(0, Math.floor(accountBonus.DEX || 0)),
+        STA: Math.max(0, Math.floor(accountBonus.STA || 0)),
+        LUCK: Math.max(0, Math.floor(accountBonus.LUCK || 0))
+    };
     player.bonus = { STR: 0, DEX: 0, STA: 0, LUCK: 0 };
-    [player.weapon, player.armor].forEach(item => {
+    const equipList = [player.weapon, player.armor];
+    if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
+        for (const sid of ACCOUNT_EQUIP_SLOT_IDS) {
+            if (typeof isAccountSlotUnlocked === "function" && isAccountSlotUnlocked(sid) && player[sid]) {
+                equipList.push(player[sid]);
+            }
+        }
+    }
+    equipList.forEach(item => {
         if (item) {
             ["STR", "DEX", "STA", "LUCK"].forEach(s => {
                 if (item[s]) player.bonus[s] += item[s];
@@ -51,10 +99,10 @@ function calcStats() {
     });
 
     ["STR", "DEX", "STA", "LUCK"].forEach(s => {
-        player.total[s] = player["base" + s] + player.bonus[s];
+        player.total[s] = player["base" + s] + player.accountBonus[s] + player.bonus[s];
     });
 
-    player.maxHp = 100 + (player.total.STA * 15);
+    player.maxHp = 100 + (player.total.STA * 16);
     player.dmg = 10 + (player.total.STR * 4);
     player.dodge = Math.min(0.60, player.total.DEX * 0.02);
     player.crit = Math.min(0.50, player.total.LUCK * 0.03);
@@ -76,14 +124,15 @@ function startLevel(lvl) {
     combatAutoplayCancelled = false;
     autoplayKickPending = false;
     currentLvl = lvl;
-    const d = ENEMY_DATA[lvl - 1];
+    const spec = getScaledEnemyForStage(lvl);
     enemy = {
-        name: d[0],
-        hp: d[1],
-        maxHp: d[1],
-        dmg: d[2],
-        dodge: d[3],
-        archetype: d[4] || "balanced",
+        name: spec.name,
+        hp: spec.hp,
+        maxHp: spec.hp,
+        dmg: spec.dmg,
+        dodge: spec.dodge,
+        archetype: spec.archetype,
+        bossSlot: spec.bossSlot,
         nextAtk: null
     };
     player.hp = player.maxHp;
@@ -93,7 +142,8 @@ function startLevel(lvl) {
     combatFlashes = [];
     combatVignette = 0;
     changeState("combat");
-    if (lvl === 2 && !localStorage.getItem(GAUNTLET_AUTOPLAY_TIP_DISMISSED_KEY)) {
+    const autoplayUnlocked = maxLvl > 1 || accountLevel >= 2;
+    if (autoplayUnlocked && (lvl === 2 || (lvl === 1 && accountLevel >= 2)) && !localStorage.getItem(GAUNTLET_AUTOPLAY_TIP_DISMISSED_KEY)) {
         showAutoplayTip = true;
     } else {
         showAutoplayTip = false;
@@ -107,6 +157,23 @@ function autoplaySleep(ms, gen) {
     });
 }
 
+function currentAutoplayStepMs() {
+    return AUTOPLAY_BASE_STEP_MS / Math.max(1, Math.min(3, combatAutoplaySpeed));
+}
+
+/** Mid-turn pause after player strike; length tracks live autoplay speed / on-off. */
+async function waitResolveMidTurnPause() {
+    let elapsed = 0;
+    while (true) {
+        const active = combatAutoplayActive && !combatAutoplayCancelled;
+        const totalMs = active ? 600 / Math.max(1, Math.min(3, combatAutoplaySpeed)) : 600;
+        if (elapsed >= totalMs) break;
+        const slice = Math.min(50, totalMs - elapsed);
+        await new Promise(r => setTimeout(r, slice));
+        elapsed += slice;
+    }
+}
+
 function shuffleZonesForAutoplay() {
     const z = ["1", "2", "3", "4", "5"];
     for (let i = z.length - 1; i > 0; i--) {
@@ -118,23 +185,22 @@ function shuffleZonesForAutoplay() {
 
 async function runCombatAutoplayTurn() {
     const gen = autoplayCancelGen;
-    const stepMs = AUTOPLAY_BASE_STEP_MS / Math.max(1, Math.min(3, combatAutoplaySpeed));
 
     const bail = () => state !== "combat" || !combatAutoplayActive || combatAutoplayCancelled || isProcessing;
 
-    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    if (!(await autoplaySleep(currentAutoplayStepMs(), gen)) || bail()) return;
 
     const zones = shuffleZonesForAutoplay();
     selBlk = [zones[0]];
     selAtk = null;
 
-    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    if (!(await autoplaySleep(currentAutoplayStepMs(), gen)) || bail()) return;
     selBlk = [zones[0], zones[1]];
 
-    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    if (!(await autoplaySleep(currentAutoplayStepMs(), gen)) || bail()) return;
     selAtk = (Math.floor(Math.random() * 5) + 1).toString();
 
-    if (!(await autoplaySleep(stepMs, gen)) || bail()) return;
+    if (!(await autoplaySleep(currentAutoplayStepMs(), gen)) || bail()) return;
 
     if (player.fury >= player.maxFury) {
         player.isGodStrike = false;
@@ -275,6 +341,15 @@ async function resolveTurn() {
         spawnEnemyBlockSparks();
         combatFlashes.push({ target: "enemy", type: "enemyBlock", life: 1 });
     } else {
+        const enemyEvaded = !useGodStrike && Math.random() < enemy.dodge;
+        if (enemyEvaded) {
+            AudioEngine.playBlock();
+            addLog(`Enemy EVADED your strike!`, COLORS.DIM_GRAY);
+            spawnText("EVADED", 750, 300, COLORS.YELLOW);
+            shake = 4;
+            spawnEnemyBlockSparks();
+            combatFlashes.push({ target: "enemy", type: "enemyBlock", life: 1 });
+        } else {
         const crit = useGodStrike || (Math.random() < player.crit);
         if (useGodStrike) AudioEngine.playGodStrike();
         else if (crit) AudioEngine.playCrit();
@@ -312,12 +387,10 @@ async function resolveTurn() {
         }
 
         if (!useGodStrike) player.fury = Math.min(player.maxFury, player.fury + 15);
+        }
     }
 
-    const resolvePauseMs = combatAutoplayActive && !combatAutoplayCancelled
-        ? 600 / Math.max(1, Math.min(3, combatAutoplaySpeed))
-        : 600;
-    await new Promise(r => setTimeout(r, resolvePauseMs));
+    await waitResolveMidTurnPause();
 
     if (enemy.hp > 0) {
         let eAtk = enemy.nextAtk;
@@ -328,6 +401,16 @@ async function resolveTurn() {
             shake = 2;
             player.fury = Math.min(player.maxFury, player.fury + 10);
             scoreDetails.blocks++;
+            score += 30;
+            spawnPlayerParryStreaks();
+            combatFlashes.push({ target: "player", type: "parry", life: 1 });
+        } else if (Math.random() < player.dodge) {
+            AudioEngine.playBlock();
+            addLog(`You dodged the ${ZONE_NAMES[eAtk]} strike!`, COLORS.CYAN);
+            spawnText("DODGE", 180, 300, COLORS.CYAN);
+            shake = 2;
+            player.fury = Math.min(player.maxFury, player.fury + 10);
+            scoreDetails.dodges++;
             score += 30;
             spawnPlayerParryStreaks();
             combatFlashes.push({ target: "player", type: "parry", life: 1 });
@@ -372,18 +455,27 @@ function checkEnd() {
         scoreDetails.stageClear += stagePoints;
         scoreDetails.hpBonus += hpBonus;
 
-        if (currentLvl === 10) {
+        if (currentLvl === GAUNTLET_TOTAL_STAGES) {
+            awardAccountXpForStageClear(currentLvl, true);
+            recordBestStageCleared(currentLvl);
             saveScore();
             changeState("victory");
         } else {
+            awardAccountXpForStageClear(currentLvl, false);
             if (currentLvl === maxLvl) {
-                maxLvl = Math.min(10, maxLvl + 1);
+                maxLvl = Math.min(GAUNTLET_TOTAL_STAGES, maxLvl + 1);
             }
-            player.ore += (currentLvl * 5);
+            recordBestStageCleared(currentLvl);
+            const goldGain = typeof getGoldForStageClear === "function"
+                ? getGoldForStageClear(currentLvl)
+                : (24 + currentLvl * 6);
+            player.gold += goldGain;
             player.points += 2;
             player.hp = player.maxHp;
             AudioEngine.playLevelUp();
             levelUpTimer = 120;
+            if (typeof rerollShopVisibleOffersFree === "function") rerollShopVisibleOffersFree();
+            if (typeof shuffleShopMysterySlotMap === "function") shuffleShopMysterySlotMap();
             changeState("camp");
         }
     } else if (player.hp <= 0) {
@@ -396,66 +488,228 @@ function checkEnd() {
     }
 }
 
-function craftItem() {
+function getCurrentCraftStageProgress() {
+    return Math.max(1, maxLvl || 1);
+}
+
+function getCraftableItemsForStage(stage, rarity) {
+    return ALL_ITEMS.filter(item => {
+        if (rarity && item.rarity !== rarity) return false;
+        return typeof isCraftTypeUnlockedAtStage === "function"
+            ? isCraftTypeUnlockedAtStage(item.type, stage)
+            : item.type === "weapon" || item.type === "armor";
+    });
+}
+
+function resetShopForNewRun() {
+    shopVisibleOffers = [null, null];
+    shopMysterySlotMap = null;
+}
+
+function shuffleShopMysterySlotMap() {
+    const tierCount = (typeof SHOP_MYSTERY_BOXES !== "undefined" && Array.isArray(SHOP_MYSTERY_BOXES))
+        ? SHOP_MYSTERY_BOXES.length
+        : 6;
+    const fallback = 1 / Math.max(1, tierCount);
+    const weights = (typeof SHOP_MYSTERY_DISPLAY_WEIGHTS !== "undefined"
+        && Array.isArray(SHOP_MYSTERY_DISPLAY_WEIGHTS)
+        && SHOP_MYSTERY_DISPLAY_WEIGHTS.length === tierCount)
+        ? SHOP_MYSTERY_DISPLAY_WEIGHTS
+        : Array(tierCount).fill(fallback);
+    const sampleTier = () => {
+        const r = Math.random();
+        let t = 0;
+        for (let i = 0; i < weights.length; i++) {
+            t += Math.max(0, weights[i]);
+            if (r < t) return i;
+        }
+        return Math.max(0, weights.length - 1);
+    };
+    shopMysterySlotMap = Array.from({ length: 6 }, sampleTier);
+}
+
+/** Slot 0 / 4 = fixed-price offers; else mystery. */
+function shopSlotOfferIndex(slot) {
+    if (slot === 0) return 0;
+    if (slot === 4) return 1;
+    return -1;
+}
+
+/** Local mystery index 0–5 for slots 1,2,3,5,6,7. */
+function shopSlotMysteryLocalIndex(slot) {
+    if (slot === 1 || slot === 2 || slot === 3) return slot - 1;
+    if (slot === 5 || slot === 6 || slot === 7) return slot - 2;
+    return -1;
+}
+
+/** Tier index into SHOP_MYSTERY_BOXES for this grid slot. */
+function getMysteryTierIndexForShopSlot(slot) {
+    const local = shopSlotMysteryLocalIndex(slot);
+    if (local < 0) return -1;
+    if (!shopMysterySlotMap || shopMysterySlotMap.length !== 6) return local;
+    return shopMysterySlotMap[local];
+}
+
+function rollShopVisibleSlot(stage, excludeItemName) {
+    let pool = getCraftableItemsForStage(stage);
+    if (!pool.length) return null;
+    if (excludeItemName) {
+        const filtered = pool.filter((it) => it.name !== excludeItemName);
+        if (filtered.length) pool = filtered;
+    }
+    for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = pool[i];
+        pool[i] = pool[j];
+        pool[j] = t;
+    }
+    const pick = pool[0];
+    const item = JSON.parse(JSON.stringify(pick));
+    const price = typeof getShopVisibleListPrice === "function" ? getShopVisibleListPrice(item) : 45;
+    return { item, price };
+}
+
+function ensureShopVisibleSlotsFilled() {
+    if (typeof shopVisibleOffers === "undefined") return;
+    const stage = getCurrentCraftStageProgress();
+    if (shopMysterySlotMap == null && typeof shuffleShopMysterySlotMap === "function") {
+        shuffleShopMysterySlotMap();
+    }
+    for (let i = 0; i < 2; i++) {
+        if (!shopVisibleOffers[i]) {
+            const ex = i === 1 && shopVisibleOffers[0] && shopVisibleOffers[0].item
+                ? shopVisibleOffers[0].item.name
+                : null;
+            shopVisibleOffers[i] = rollShopVisibleSlot(stage, ex);
+        }
+    }
+    if (shopVisibleOffers[0] && shopVisibleOffers[1] && shopVisibleOffers[0].item && shopVisibleOffers[1].item
+        && shopVisibleOffers[0].item.name === shopVisibleOffers[1].item.name) {
+        shopVisibleOffers[1] = rollShopVisibleSlot(
+            stage,
+            shopVisibleOffers[0].item.name
+        );
+    }
+}
+
+/** Reroll both fixed-price shop rows (no gold). Used after stage wins and after paid refresh. */
+function rerollShopVisibleOffersFree() {
+    if (typeof shopVisibleOffers === "undefined") return;
+    const stage = getCurrentCraftStageProgress();
+    shopVisibleOffers[0] = rollShopVisibleSlot(stage, null);
+    shopVisibleOffers[1] = rollShopVisibleSlot(
+        stage,
+        shopVisibleOffers[0] && shopVisibleOffers[0].item ? shopVisibleOffers[0].item.name : null
+    );
+}
+
+function tryPurchaseShopVisible(slotIndex) {
+    const off = shopVisibleOffers[slotIndex];
+    if (!off || !off.item) return;
+
     if (player.inventory.length >= INV_LIMIT) {
         inventoryError = true;
         addLog("Inventory Full!", COLORS.BLOOD_RED);
         return;
     }
-
-    const COST = 10;
-    if (player.ore < COST) {
-        addLog(`Need ${COST} Ore!`, COLORS.BLOOD_RED);
-        spawnText("NEED ORE", 480, 325, COLORS.RED);
+    if (player.gold < off.price) {
+        addLog(`Need ${off.price} gold.`, COLORS.BLOOD_RED);
+        spawnText("NEED GOLD", 480, 300, COLORS.RED);
         return;
     }
-    player.ore -= COST;
     inventoryError = false;
-
-    const epicCh = 0.05 + (player.total.LUCK * 0.01);
-    const rareCh = 0.15 + (player.total.LUCK * 0.02);
-    const legCh = (player.baseLUCK >= 15) ? 0.02 : 0;
-    const roll = Math.random();
-
-    let rarity = "COMMON";
-    if (roll < legCh) rarity = "LEGENDARY";
-    else if (roll < legCh + epicCh) rarity = "EPIC";
-    else if (roll < legCh + epicCh + rareCh) rarity = "RARE";
-
-    const possible = ALL_ITEMS.filter(i => i.rarity === rarity);
-    const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
-    pendingCraftedItem = newItem;
-    AudioEngine.playCast();
-    craftingAnimTimer = 60; // 1 second animation
+    player.gold -= off.price;
+    player.inventory.push(JSON.parse(JSON.stringify(off.item)));
+    shopVisibleOffers[slotIndex] = null;
+    AudioEngine.playLevelUp();
+    spawnText("BOUGHT!", 480, 280, COLORS.GOLD);
+    addLog(`Bought ${off.item.name} for ${off.price} gold.`, COLORS.TARNISHED_GOLD);
 }
 
-function resolveCrafting(keep) {
-    if (!craftedItem) return;
+function rollItemFromMysteryBox(boxIndex) {
+    const box = typeof SHOP_MYSTERY_BOXES !== "undefined" ? SHOP_MYSTERY_BOXES[boxIndex] : null;
+    if (!box) return null;
+    const craftStage = getCurrentCraftStageProgress();
+    const unlockedPool = getCraftableItemsForStage(craftStage);
+    if (!unlockedPool.length) return null;
 
-    if (keep) {
-        player.inventory.push(craftedItem);
-        AudioEngine.playLevelUp(); // Triumph sound for keeping
-        spawnText("CRAFTED!", 480, 280, COLORS.GOLD);
-    } else {
-        const refund = craftedItem.rarity === "EPIC" ? 8 : (craftedItem.rarity === "RARE" ? 5 : 3);
-        player.ore += refund;
-        AudioEngine.playBlock(); // Metallic sound for salvage
-        spawnText("SALVAGED", 480, 280, COLORS.CYAN);
+    let rarity = typeof sampleMysteryRarityFromBox === "function"
+        ? sampleMysteryRarityFromBox(box)
+        : "COMMON";
+    if (rarity === "LEGENDARY" && player.baseLUCK < 15) {
+        rarity = "EPIC";
     }
-    craftedItem = null;
+
+    let possible = getCraftableItemsForStage(craftStage, rarity);
+    if (possible.length === 0) {
+        possible = unlockedPool;
+    }
+    if (possible.length === 0) return null;
+    return JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
 }
 
-function salvageItem(item) {
-    if (!item || item === player.weapon || item === player.armor) return;
+function tryPurchaseMysteryBox(boxIndex) {
+    const box = typeof SHOP_MYSTERY_BOXES !== "undefined" ? SHOP_MYSTERY_BOXES[boxIndex] : null;
+    if (!box) return;
 
-    const refund = item.rarity === "EPIC" ? 8 : (item.rarity === "RARE" ? 5 : 3);
-    player.ore += refund;
+    if (player.inventory.length >= INV_LIMIT) {
+        inventoryError = true;
+        addLog("Inventory Full!", COLORS.BLOOD_RED);
+        return;
+    }
+    if (player.gold < box.price) {
+        addLog(`Need ${box.price} gold.`, COLORS.BLOOD_RED);
+        spawnText("NEED GOLD", 480, 300, COLORS.RED);
+        return;
+    }
+
+    const newItem = rollItemFromMysteryBox(boxIndex);
+    if (!newItem) {
+        addLog("No eligible items for this chest.", COLORS.BLOOD_RED);
+        return;
+    }
+
+    inventoryError = false;
+    player.gold -= box.price;
+    player.inventory.push(newItem);
+    AudioEngine.playCast();
+    spawnText("OPENED!", 480, 280, COLORS.GOLD);
+    addLog(`Opened ${box.label}: ${newItem.name}.`, COLORS.TARNISHED_GOLD);
+}
+
+function performShopRefresh() {
+    const cost = typeof getShopRefreshCost === "function" ? getShopRefreshCost(maxLvl) : 44;
+    if (player.gold < cost) {
+        addLog(`Need ${cost} gold to refresh.`, COLORS.BLOOD_RED);
+        spawnText("NEED GOLD", 480, 300, COLORS.RED);
+        return;
+    }
+    player.gold -= cost;
+    rerollShopVisibleOffersFree();
+    if (typeof shuffleShopMysterySlotMap === "function") shuffleShopMysterySlotMap();
+    AudioEngine.playClick();
+    addLog(`Shop refreshed (-${cost} gold).`, COLORS.CYAN);
+}
+
+function isItemEquippedAnywhere(item) {
+    if (!item || !player) return false;
+    if (item === player.weapon || item === player.armor) return true;
+    if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)) {
+        for (const sid of ACCOUNT_EQUIP_SLOT_IDS) {
+            if (player[sid] === item) return true;
+        }
+    }
+    return false;
+}
+
+function sellItemForGold(item) {
+    if (!item || isItemEquippedAnywhere(item)) return;
+    const g = typeof getSellGoldForItem === "function" ? getSellGoldForItem(item) : 10;
+    player.gold += g;
     player.inventory = player.inventory.filter(i => i !== item);
     inventoryError = false;
-
-    addLog(`Salvaged ${item.name} for ${refund} Ore.`, COLORS.DIM_GRAY);
+    addLog(`Sold ${item.name} for ${g} gold.`, COLORS.DIM_GRAY);
     selectedInvItem = null;
-    salvageConfirm = null;
 }
 
 function addLog(txt, col) { log.push({ txt, col }); if (log.length > 50) log.shift(); }

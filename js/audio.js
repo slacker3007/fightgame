@@ -13,7 +13,8 @@ const AudioEngine = (() => {
         godStrike: new Howl({ src: ['assets/audio/godStrike.wav'], volume: 0.8 }),
         cast: new Howl({ src: ['assets/audio/cast.wav'], volume: 0.5 }),
         levelUp: new Howl({ src: ['assets/audio/levelUp.wav'], volume: 0.6 }),
-        gameOver: new Howl({ src: ['assets/audio/gameOver.wav'], volume: 0.6 })
+        gameOver: new Howl({ src: ['assets/audio/gameOver.wav'], volume: 0.6 }),
+        equipClank: new Howl({ src: ['assets/audio/block.wav'], volume: 0.5 })
     };
 
     let isMuted = false;
@@ -57,6 +58,7 @@ const AudioEngine = (() => {
         playGodStrike: () => sounds.godStrike.play(),
         playCast: () => sounds.cast.play(),
         playLevelUp: () => sounds.levelUp.play(),
-        playGameOver: () => sounds.gameOver.play()
+        playGameOver: () => sounds.gameOver.play(),
+        playEquipClank: () => sounds.equipClank.play()
     };
 })();
