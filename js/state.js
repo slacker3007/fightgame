@@ -37,6 +37,8 @@ let accountRoadmapHoverPt = { x: 0, y: 0 };
 let shopVisibleOffers = [null, null];
 /** Permutation of tier indices 0–5 for the six mystery UI slots (local order: slots 1,2,3 then 5,6,7). */
 let shopMysterySlotMap = null;
+/** Mystery chest UI slots consumed this shop cycle; keys are slot numbers (1,2,3,5,6,7). */
+let shopConsumedMysterySlots = {};
 /** Merchant screen: hovered mystery-chest slot index (1,2,3,5,6,7), else -1 */
 let shopChestHoverSlot = -1;
 let showBattleTip = !localStorage.getItem('battleTipShown');

@@ -504,6 +504,22 @@ function getCraftableItemsForStage(stage, rarity) {
 function resetShopForNewRun() {
     shopVisibleOffers = [null, null];
     shopMysterySlotMap = null;
+    shopConsumedMysterySlots = {};
+}
+
+function resetShopConsumedMysterySlots() {
+    shopConsumedMysterySlots = {};
+}
+
+function isShopMysterySlotConsumed(slot) {
+    return !!(shopConsumedMysterySlots && shopConsumedMysterySlots[slot]);
+}
+
+function markShopMysterySlotConsumed(slot) {
+    if (!shopConsumedMysterySlots || typeof shopConsumedMysterySlots !== "object") {
+        shopConsumedMysterySlots = {};
+    }
+    shopConsumedMysterySlots[slot] = true;
 }
 
 function shuffleShopMysterySlotMap() {
@@ -601,6 +617,7 @@ function rerollShopVisibleOffersFree() {
         stage,
         shopVisibleOffers[0] && shopVisibleOffers[0].item ? shopVisibleOffers[0].item.name : null
     );
+    resetShopConsumedMysterySlots();
 }
 
 function tryPurchaseShopVisible(slotIndex) {
@@ -648,9 +665,10 @@ function rollItemFromMysteryBox(boxIndex) {
     return JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
 }
 
-function tryPurchaseMysteryBox(boxIndex) {
+function tryPurchaseMysteryBox(boxIndex, shopSlot) {
     const box = typeof SHOP_MYSTERY_BOXES !== "undefined" ? SHOP_MYSTERY_BOXES[boxIndex] : null;
     if (!box) return;
+    if (typeof shopSlot === "number" && isShopMysterySlotConsumed(shopSlot)) return;
 
     if (player.inventory.length >= INV_LIMIT) {
         inventoryError = true;
@@ -672,6 +690,7 @@ function tryPurchaseMysteryBox(boxIndex) {
     inventoryError = false;
     player.gold -= box.price;
     player.inventory.push(newItem);
+    if (typeof shopSlot === "number") markShopMysterySlotConsumed(shopSlot);
     AudioEngine.playCast();
     spawnText("OPENED!", 480, 280, COLORS.GOLD);
     addLog(`Opened ${box.label}: ${newItem.name}.`, COLORS.TARNISHED_GOLD);

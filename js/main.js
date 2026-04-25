@@ -113,10 +113,6 @@ function handleInteraction(e) {
         handleCombatClick(mx, my);
     }
     
-    // Global Mute Toggle (e.g., top right corner)
-    if (mx > 910 && mx < 950 && my > 10 && my < 50) {
-        AudioEngine.toggleMute();
-    }
 }
 
 canvas.addEventListener('mousedown', handleInteraction);
@@ -446,6 +442,9 @@ function updateUIButtons() {
             createButton(accLayout.closeBtn.x, accLayout.closeBtn.y, accLayout.closeBtn.w, accLayout.closeBtn.h, "account_profile", "\u00D7", COLORS.GRAY, () => {
                 changeState(accountProfileReturnState);
             });
+            createButton(40, 590, 190, 40, "account_profile", `SOUND: ${AudioEngine.isMuted() ? "OFF" : "ON"}`, COLORS.GRAY, () => {
+                AudioEngine.toggleMute();
+            });
             createButton(260, 590, 180, 40, "account_profile", "LOG OUT", COLORS.DIM_GRAY, () => {
                 performLogoutToAuth();
             });
@@ -471,6 +470,7 @@ function updateUIButtons() {
     }
     if (state === "shop") {
         if (typeof ensureShopVisibleSlotsFilled === "function") ensureShopVisibleSlotsFilled();
+        createButton(900, 12, 42, 36, "shop", "\u00D7", COLORS.GRAY, () => changeState("camp"));
 
         createButton(30, 598, 200, 48, "shop", "BACK", COLORS.GRAY, () => {
             changeState("camp");
@@ -495,6 +495,7 @@ function updateUIButtons() {
                     }, { shopAffordable: canBuy });
                 }
             } else if (typeof SHOP_MYSTERY_BOXES !== "undefined") {
+                if (typeof isShopMysterySlotConsumed === "function" && isShopMysterySlotConsumed(slot)) continue;
                 const tier = typeof getMysteryTierIndexForShopSlot === "function"
                     ? getMysteryTierIndexForShopSlot(slot)
                     : -1;
@@ -502,7 +503,7 @@ function updateUIButtons() {
                 if (box) {
                     const canBuy = player.gold >= box.price;
                     createButton(L.buyX, L.buyY, L.buyW, L.buyH, "shop", `${box.price}g`, COLORS.GRAY, () => {
-                        if (typeof tryPurchaseMysteryBox === "function") tryPurchaseMysteryBox(tier);
+                        if (typeof tryPurchaseMysteryBox === "function") tryPurchaseMysteryBox(tier, slot);
                     }, { shopAffordable: canBuy });
                 }
             }
@@ -522,6 +523,10 @@ function updateUIButtons() {
         });
     }
     if (state === "inventory") {
+        createButton(900, 12, 42, 36, "inventory", "\u00D7", COLORS.GRAY, () => {
+            selectedInvItem = null;
+            changeState("camp");
+        });
         createButton(367, 530, 225, 60, "inventory", "BACK TO CAMP", COLORS.GRAY, () => {
             changeState("camp");
             selectedInvItem = null;
@@ -558,6 +563,7 @@ function updateUIButtons() {
         }
     }
     if (state === "battle_select") {
+        createButton(900, 12, 42, 36, "battle_select", "\u00D7", COLORS.GRAY, () => changeState("camp"));
         createButton(405, 590, 150, 40, "battle_select", "BACK", COLORS.GRAY, () => changeState("camp"));
 
         const barWidth = 700, startX = (canvas.width - barWidth) / 2, startY = 150, slotW = barWidth / 5;
@@ -817,8 +823,6 @@ function gameLoop() {
         else if (state === "battle_select") drawBattleSelect();
         else if (state === "gameover" || state === "victory") drawEnd();
         drawFxParticles();
-        drawMuteBtn();
-
         particles.forEach((p, i) => {
             ctx.globalAlpha = p.life;
             ctx.fillStyle = p.col;

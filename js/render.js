@@ -2118,6 +2118,7 @@ function drawShop() {
     for (let slot = 0; slot < 8; slot++) {
         const L = typeof getShopSlotLayout === "function" ? getShopSlotLayout(slot) : null;
         if (!L) continue;
+        const mysteryConsumed = typeof isShopMysterySlotConsumed === "function" && isShopMysterySlotConsumed(slot);
         ctx.strokeStyle = "rgba(55, 48, 42, 0.55)";
         ctx.lineWidth = 1;
         ctx.strokeRect(L.x + 0.5, L.y + 0.5, L.cellW - 1, L.cellH - 1);
@@ -2150,23 +2151,38 @@ function drawShop() {
             ctx.fillStyle = "#e8dcc8";
             ctx.font = "bold 9px Ubuntu, sans-serif";
             ctx.fillText(box.label, L.cx, L.labelY + 4);
-            ctx.save();
-            ctx.globalAlpha = 0.94;
-            const drawn = drawMysteryBoxAtlas(tier, L.chestX, L.chestY, L.chestW, L.chestH);
-            ctx.restore();
-            if (!drawn) {
-                const fallback = assets[box.assetKey];
-                if (fallback && fallback.complete) {
-                    ctx.save();
-                    ctx.globalAlpha = 0.94;
-                    ctx.drawImage(fallback, L.chestX, L.chestY, L.chestW, L.chestH);
-                    ctx.restore();
-                } else {
-                    ctx.fillStyle = "rgba(22, 18, 24, 0.95)";
-                    ctx.fillRect(L.chestX, L.chestY, L.chestW, L.chestH);
-                    strokeChampionIronFrame(L.chestX, L.chestY, L.chestW, L.chestH);
+            if (!mysteryConsumed) {
+                ctx.save();
+                ctx.globalAlpha = 0.94;
+                const drawn = drawMysteryBoxAtlas(tier, L.chestX, L.chestY, L.chestW, L.chestH);
+                ctx.restore();
+                if (!drawn) {
+                    const fallback = assets[box.assetKey];
+                    if (fallback && fallback.complete) {
+                        ctx.save();
+                        ctx.globalAlpha = 0.94;
+                        ctx.drawImage(fallback, L.chestX, L.chestY, L.chestW, L.chestH);
+                        ctx.restore();
+                    } else {
+                        ctx.fillStyle = "rgba(22, 18, 24, 0.95)";
+                        ctx.fillRect(L.chestX, L.chestY, L.chestW, L.chestH);
+                        strokeChampionIronFrame(L.chestX, L.chestY, L.chestW, L.chestH);
+                    }
                 }
+            } else {
+                ctx.fillStyle = "rgba(36, 36, 42, 0.95)";
+                ctx.fillRect(L.chestX, L.chestY, L.chestW, L.chestH);
+                strokeChampionIronFrame(L.chestX, L.chestY, L.chestW, L.chestH);
+                ctx.fillStyle = "#7e7b84";
+                ctx.font = "bold 11px Ubuntu, sans-serif";
+                ctx.fillText("SOLD OUT", L.cx, L.chestY + L.chestH * 0.56);
             }
+        }
+        if (mysteryConsumed) {
+            ctx.fillStyle = "rgba(10, 10, 14, 0.46)";
+            ctx.fillRect(L.x + 1, L.y + 1, L.cellW - 2, L.cellH - 2);
+            ctx.strokeStyle = "rgba(120,120,130,0.55)";
+            ctx.strokeRect(L.x + 1.5, L.y + 1.5, L.cellW - 3, L.cellH - 3);
         }
     }
 
