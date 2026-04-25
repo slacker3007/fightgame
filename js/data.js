@@ -44,19 +44,19 @@ const BOSSES_PER_TIER = 10;
 
 /**
  * Account level milestones (every 10 levels). Lv 10–70: extra gear `slotId` on `player`; Lv 80/90/100: passive rewards (no gear slot).
- * Gear `slotId` matches `player[slotId]` and item `type`. `ore` is 0 for these milestones.
+ * Gear `slotId` matches `player[slotId]` and item `type`. `gold` is 0 for these milestones (reserved for future rewards).
  */
 const ACCOUNT_LEVEL_MILESTONES = [
-    { level: 10, ore: 0, slotId: "shield", label: "Shield", slotLabel: "SHIELD" },
-    { level: 20, ore: 0, slotId: "helm", label: "Helm", slotLabel: "HELM" },
-    { level: 30, ore: 0, slotId: "gloves", label: "Gloves", slotLabel: "GLOVES" },
-    { level: 40, ore: 0, slotId: "boots", label: "Boots", slotLabel: "BOOTS" },
-    { level: 50, ore: 0, slotId: "ring", label: "Ring", slotLabel: "RING" },
-    { level: 60, ore: 0, slotId: "necklace", label: "Necklace", slotLabel: "NECK" },
-    { level: 70, ore: 0, slotId: "banner", label: "Banner", slotLabel: "BANNER" },
-    { level: 80, ore: 0, rewardType: "passive", label: "Passive", slotLabel: "★" },
-    { level: 90, ore: 0, rewardType: "passive", label: "Passive", slotLabel: "★" },
-    { level: 100, ore: 0, rewardType: "passive", label: "Passive", slotLabel: "★" }
+    { level: 10, gold: 0, slotId: "shield", label: "Shield", slotLabel: "SHIELD" },
+    { level: 20, gold: 0, slotId: "helm", label: "Helm", slotLabel: "HELM" },
+    { level: 30, gold: 0, slotId: "gloves", label: "Gloves", slotLabel: "GLOVES" },
+    { level: 40, gold: 0, slotId: "boots", label: "Boots", slotLabel: "BOOTS" },
+    { level: 50, gold: 0, slotId: "ring", label: "Ring", slotLabel: "RING" },
+    { level: 60, gold: 0, slotId: "necklace", label: "Necklace", slotLabel: "NECK" },
+    { level: 70, gold: 0, slotId: "banner", label: "Banner", slotLabel: "BANNER" },
+    { level: 80, gold: 0, rewardType: "passive", label: "Passive", slotLabel: "★" },
+    { level: 90, gold: 0, rewardType: "passive", label: "Passive", slotLabel: "★" },
+    { level: 100, gold: 0, rewardType: "passive", label: "Passive", slotLabel: "★" }
 ];
 
 const ACCOUNT_PASSIVE_MILESTONE_FIRST = 5;
@@ -140,7 +140,7 @@ function getScaledEnemyForStage(stage) {
 }
 
 /**
- * Craft unlocks are tied to current run progress (`maxLvl`) and not account level.
+ * Shop / loot type unlocks are tied to current run progress (`maxLvl`) and not account level.
  * Item types unlock every 10 stages after armor, starting from:
  * weapon 1, armor 1, helm 11.
  */
@@ -206,3 +206,195 @@ const ALL_ITEMS = [
     { name: "Ironbound Banner", type: "banner", STA: 4, STR: 2, rarity: "RARE" },
     { name: "Warleader Standard", type: "banner", STA: 6, STR: 4, rarity: "EPIC" }
 ];
+
+/** Gold from clearing a stage (before victory finale). Stage 1 => 30 (affords cheapest chest). */
+function getGoldForStageClear(stage) {
+    const s = Math.max(1, Math.floor(stage || 1));
+    return 24 + s * 6;
+}
+
+const SHOP_VISIBLE_RARITY_BASE = Object.freeze({
+    COMMON: 45,
+    RARE: 140,
+    EPIC: 290,
+    LEGENDARY: 680
+});
+
+function getShopVisibleListPrice(item) {
+    if (!item || !item.rarity) return 45;
+    const base = SHOP_VISIBLE_RARITY_BASE[item.rarity] != null
+        ? SHOP_VISIBLE_RARITY_BASE[item.rarity]
+        : SHOP_VISIBLE_RARITY_BASE.COMMON;
+    const weaponArmor = item.type === "weapon" || item.type === "armor";
+    const mul = weaponArmor ? 1 : 0.92;
+    return Math.max(1, Math.floor(base * mul));
+}
+
+function getShopRefreshCost(maxStage) {
+    const m = Math.max(1, Math.floor(maxStage || 1));
+    return 40 + m * 4;
+}
+
+const SHOP_SELL_GOLD_BY_RARITY = Object.freeze({
+    COMMON: 10,
+    RARE: 22,
+    EPIC: 45,
+    LEGENDARY: 100
+});
+
+function getSellGoldForItem(item) {
+    if (!item || !item.rarity) return SHOP_SELL_GOLD_BY_RARITY.COMMON;
+    return SHOP_SELL_GOLD_BY_RARITY[item.rarity] != null
+        ? SHOP_SELL_GOLD_BY_RARITY[item.rarity]
+        : SHOP_SELL_GOLD_BY_RARITY.COMMON;
+}
+
+/**
+ * Six mystery tiers: price and rarity weights (must sum to 1).
+ * `assetKey` matches loadAsset in state.js.
+ */
+const SHOP_MYSTERY_BOXES = Object.freeze([
+    { id: "rust", label: "Rust Chest", price: 30, assetKey: "mystery_box_0",
+        weights: { COMMON: 0.78, RARE: 0.18, EPIC: 0.035, LEGENDARY: 0.005 } },
+    { id: "iron", label: "Iron Chest", price: 55, assetKey: "mystery_box_1",
+        weights: { COMMON: 0.55, RARE: 0.32, EPIC: 0.12, LEGENDARY: 0.01 } },
+    { id: "steel", label: "Steel Chest", price: 95, assetKey: "mystery_box_2",
+        weights: { COMMON: 0.35, RARE: 0.38, EPIC: 0.22, LEGENDARY: 0.05 } },
+    { id: "silver", label: "Silver Chest", price: 160, assetKey: "mystery_box_3",
+        weights: { COMMON: 0.18, RARE: 0.35, EPIC: 0.38, LEGENDARY: 0.09 } },
+    { id: "gold", label: "Gold Chest", price: 280, assetKey: "mystery_box_4",
+        weights: { COMMON: 0.08, RARE: 0.22, EPIC: 0.45, LEGENDARY: 0.25 } },
+    { id: "void", label: "Void Chest", price: 480, assetKey: "mystery_box_5",
+        weights: { COMMON: 0.02, RARE: 0.13, EPIC: 0.40, LEGENDARY: 0.45 } }
+]);
+
+/**
+ * Shop display distribution for the six mystery slots.
+ * Values are probabilities by tier index (0..5), must sum to ~1.
+ */
+const SHOP_MYSTERY_DISPLAY_WEIGHTS = Object.freeze([
+    0.40, // rust
+    0.24, // iron
+    0.16, // steel
+    0.10, // silver
+    0.07, // gold
+    0.03  // void
+]);
+
+function sampleMysteryRarityFromBox(box) {
+    const w = box.weights;
+    const r = Math.random();
+    let t = 0;
+    if (r < (t += w.COMMON)) return "COMMON";
+    if (r < (t += w.RARE)) return "RARE";
+    if (r < (t += w.EPIC)) return "EPIC";
+    if (r < (t += w.LEGENDARY)) return "LEGENDARY";
+    return "COMMON";
+}
+
+/**
+ * Merchant grid: 2 rows × 4 columns, slotIndex 0–1 = visible offers, 2–7 = mystery boxes.
+ * Geometry shared by render.js and main.js.
+ */
+/** Paid refresh control (shop header); must match createButton in main.js and draw in render.js. */
+const SHOP_REFRESH_TOP_BTN = Object.freeze({ x: 688, y: 12, w: 200, h: 36 });
+
+const SHOP_SLOT_GRID = Object.freeze({
+    originX: 364,
+    /** Top of first shop row; aligns with left Type Unlocks panel (see getShopScreenLayout). */
+    originY: 132,
+    cellW: 136,
+    gap: 8,
+    rowStride: 156,
+    labelY: 6,
+    artTop: 20,
+    slotSize: 100,
+    chestImgH: 76,
+    buyH: 30
+});
+
+/**
+ * Merchant screen chrome: sidebar, helper strip, wares headings (shared coords for render).
+ */
+function getShopScreenLayout() {
+    const g = SHOP_SLOT_GRID;
+    const top = g.originY;
+    const typeCount = typeof ITEM_TYPE_MIN_STAGE !== "undefined"
+        ? Object.keys(ITEM_TYPE_MIN_STAGE).length
+        : 9;
+    const innerPadTop = 28;
+    const headerBlockH = 46;
+    const listLineH = 24;
+    const listH = typeCount * listLineH;
+    const unlockPanelH = innerPadTop + headerBlockH + listH + 12;
+    const sidebar = { x: 70, y: top, w: 270, h: unlockPanelH };
+    const gap = 8;
+    const helper = {
+        x: sidebar.x,
+        y: sidebar.y + sidebar.h + gap,
+        w: sidebar.w,
+        h: 46
+    };
+    return {
+        sidebar,
+        helper,
+        innerX: 84,
+        titleY: sidebar.y + innerPadTop,
+        stageY: sidebar.y + innerPadTop + 18,
+        unlockListStartY: sidebar.y + innerPadTop + 40,
+        unlockLineH: listLineH,
+        waresTitleX: g.originX,
+        waresTitleY: top - 18,
+        waresSubY: top - 4
+    };
+}
+
+function getShopSlotLayout(slotIndex) {
+    const g = SHOP_SLOT_GRID;
+    if (slotIndex < 0 || slotIndex > 7 || typeof slotIndex !== "number") return null;
+    const col = slotIndex % 4;
+    const row = Math.floor(slotIndex / 4);
+    const x = g.originX + col * (g.cellW + g.gap);
+    const y = g.originY + row * g.rowStride;
+    const cx = x + g.cellW / 2;
+    const slotSize = g.slotSize;
+    const slotX = x + (g.cellW - slotSize) / 2;
+    const slotY = y + g.artTop;
+    const chestW = g.cellW - 10;
+    const chestX = x + (g.cellW - chestW) / 2;
+    const chestY = slotY;
+    const buyX = x + 3;
+    const buyW = g.cellW - 6;
+    const buyY = slotY + Math.max(g.slotSize, g.chestImgH) + 4;
+    return {
+        x,
+        y,
+        cellW: g.cellW,
+        cellH: g.rowStride - 2,
+        cx,
+        labelY: y + g.labelY,
+        slotX,
+        slotY,
+        slotSize,
+        chestX,
+        chestY,
+        chestW,
+        chestH: g.chestImgH,
+        buyX,
+        buyY,
+        buyW,
+        buyH: g.buyH
+    };
+}
+
+/** Y positions for sell strip below merchant grid (shared by render + main). */
+function getShopSellLayout() {
+    let bottom = 0;
+    for (let s = 0; s < 8; s++) {
+        const L = getShopSlotLayout(s);
+        if (L) bottom = Math.max(bottom, L.buyY + L.buyH);
+    }
+    const labelY = bottom + 16;
+    const rowY = labelY + 18;
+    return { labelY, rowY };
+}

@@ -458,10 +458,11 @@ function applyAccountLevelMilestoneGrants(oldLevel, newLevel) {
         if (oldLevel < L && newLevel >= L && !slotSet.has(L)) {
             slotSet.add(L);
             changed = true;
-            const ore = typeof m.ore === 'number' && Number.isFinite(m.ore) ? Math.floor(m.ore) : 0;
-            if (ore > 0 && typeof player === 'object' && player && typeof player.ore === 'number') {
-                player.ore += ore;
-                if (typeof addLog === 'function') addLog(`Account Lv ${L} reward: +${ore} Ore!`, COLORS.GOLD);
+            const goldReward = (typeof m.gold === 'number' && Number.isFinite(m.gold) ? Math.floor(m.gold) : 0)
+                || (typeof m.ore === 'number' && Number.isFinite(m.ore) ? Math.floor(m.ore) : 0);
+            if (goldReward > 0 && typeof player === 'object' && player && typeof player.gold === 'number') {
+                player.gold += goldReward;
+                if (typeof addLog === 'function') addLog(`Account Lv ${L} reward: +${goldReward} gold!`, COLORS.GOLD);
             } else if (typeof addLog === 'function') {
                 const label = typeof m.label === 'string' && m.label ? m.label : 'Reward';
                 const slotHint = m.slotId ? `${label} slot` : label;

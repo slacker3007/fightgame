@@ -1,8 +1,8 @@
 let uiButtons = [];
-let salvageConfirm = null;
-
-function createButton(x, y, w, h, stateReq, label, color, action) {
-    uiButtons.push({ x, y, w, h, state: stateReq, label, color, action });
+function createButton(x, y, w, h, stateReq, label, color, action, extra) {
+    const b = { x, y, w, h, state: stateReq, label, color, action };
+    if (extra && typeof extra === "object") Object.assign(b, extra);
+    uiButtons.push(b);
 }
 
 const mobileInput = document.getElementById('mobileInput');
@@ -43,7 +43,7 @@ function handleInteraction(e) {
 
     if (inventoryError) inventoryError = false;
 
-    if (state === "camp" || state === "inventory" || state === "battle_select") {
+    if (state === "camp" || state === "inventory" || state === "shop" || state === "battle_select") {
         const H = getAccountHeaderLayout();
         if (mx > H.hit.x && mx < H.hit.x + H.hit.w && my > H.hit.y && my < H.hit.y + H.hit.h) {
             AudioEngine.playClick();
@@ -142,13 +142,36 @@ function handleAccountProfileMouseLeave() {
     accountRoadmapHover = null;
 }
 
+function handleShopMouseMove(e) {
+    if (!isLoaded || state !== "shop") {
+        shopChestHoverSlot = -1;
+        return;
+    }
+    if (e && e.touches && e.touches.length) return;
+    const pos = getMousePos(e);
+    let hit = -1;
+    const chestSlots = [1, 2, 3, 5, 6, 7];
+    for (let i = 0; i < chestSlots.length; i++) {
+        const slot = chestSlots[i];
+        const L = typeof getShopSlotLayout === "function" ? getShopSlotLayout(slot) : null;
+        if (!L) continue;
+        if (pos.x >= L.chestX && pos.x <= L.chestX + L.chestW && pos.y >= L.chestY && pos.y <= L.chestY + L.chestH) {
+            hit = slot;
+            break;
+        }
+    }
+    shopChestHoverSlot = hit;
+}
+
 canvas.addEventListener("mousemove", e => {
     handleAccountProfileMouseMove(e);
     handleInventoryMouseMove(e);
+    handleShopMouseMove(e);
 });
 canvas.addEventListener("mouseleave", () => {
     handleAccountProfileMouseLeave();
     handleInventoryMouseLeave();
+    shopChestHoverSlot = -1;
 });
 
 window.addEventListener('keydown', (e) => {
@@ -200,8 +223,6 @@ function continueFromAccountProfile() {
 }
 
 function handleInventoryClick(mx, my) {
-    if (salvageConfirm) return;
-
     if (selectedInvItem && mx > 875 && mx < 905 && my > 115 && my < 145) {
         selectedInvItem = null; return;
     }
@@ -225,7 +246,6 @@ function handleInventoryClick(mx, my) {
             const unlocked = entry.baseSlot || (typeof isAccountSlotUnlocked === "function" && isAccountSlotUnlocked(entry.slotId));
             if (unlocked) {
                 selectedInvItem = player[entry.slotId];
-                salvageConfirm = null;
             }
             break;
         }
@@ -239,10 +259,8 @@ function handleInventoryClick(mx, my) {
         if (mx > x && mx < x + inv.cell && my > y && my < y + inv.cell) {
             if (i < player.inventory.length) {
                 selectedInvItem = player.inventory[i];
-                salvageConfirm = null;
             } else {
                 selectedInvItem = null;
-                salvageConfirm = null;
             }
             break;
         }
@@ -252,7 +270,6 @@ function handleInventoryClick(mx, my) {
         const y = inv.bodyTop + Math.floor(i / inv.cols) * cellStride;
         if (mx > x && mx < x + inv.cell && my > y && my < y + inv.cell) {
             selectedInvItem = player.inventory[i];
-            salvageConfirm = null;
             break;
         }
     }
@@ -447,79 +464,96 @@ function updateUIButtons() {
     }
     if (state === "camp") {
         createButton(29, 150, 281, 297, "camp", "CHAMPION", COLORS.BTN_BLUE, () => changeState("inventory"));
-        createButton(340, 150, 281, 297, "camp", "FORGE", "#5a32a8", () => changeState("forge"));
+        createButton(340, 150, 281, 297, "camp", "SHOP", "#5a32a8", () => changeState("shop"));
         createButton(651, 150, 281, 297, "camp", "BATTLE", COLORS.RED, () => {
             changeState("battle_select");
         });
     }
-    if (state === "forge") {
-        if (craftingAnimTimer > 0) {
-            // No buttons during animation
-        } else if (craftedItem) {
-            createButton(300, 500, 160, 50, "forge", "KEEP", COLORS.GREEN, () => resolveCrafting(true));
-            createButton(500, 500, 160, 50, "forge", "SALVAGE", COLORS.RED, () => resolveCrafting(false));
-        } else {
-            const craftStage = typeof getCurrentCraftStageProgress === "function" ? getCurrentCraftStageProgress() : 1;
-            const hasCraftablePool = typeof getCraftableItemsForStage === "function"
-                ? getCraftableItemsForStage(craftStage).length > 0
-                : true;
-            if (hasCraftablePool) {
-                createButton(370, 120, 220, 220, "forge", "CRAFT", "#cc8400", () => craftItem());
-            } else {
-                createButton(370, 120, 220, 220, "forge", "CRAFT LOCKED", COLORS.DIM_GRAY, () => {
-                    addLog(`No craftable types unlocked for stage ${craftStage}.`, COLORS.BLOOD_RED);
-                    spawnText("FORGE LOCKED", 480, 325, COLORS.RED);
-                });
+    if (state === "shop") {
+        if (typeof ensureShopVisibleSlotsFilled === "function") ensureShopVisibleSlotsFilled();
+
+        createButton(30, 598, 200, 48, "shop", "BACK", COLORS.GRAY, () => {
+            changeState("camp");
+        });
+        const refreshCost = typeof getShopRefreshCost === "function" ? getShopRefreshCost(maxLvl) : 44;
+        const canRefresh = player.gold >= refreshCost;
+        const rt = typeof SHOP_REFRESH_TOP_BTN !== "undefined" ? SHOP_REFRESH_TOP_BTN : { x: 688, y: 12, w: 200, h: 36 };
+        createButton(rt.x, rt.y, rt.w, rt.h, "shop", `REFRESH (${refreshCost}g)`, COLORS.RED, () => {
+            if (typeof performShopRefresh === "function") performShopRefresh();
+        }, { shopAffordable: canRefresh, shopRedRefresh: true });
+
+        for (let slot = 0; slot < 8; slot++) {
+            const L = typeof getShopSlotLayout === "function" ? getShopSlotLayout(slot) : null;
+            if (!L) continue;
+            const offerIx = typeof shopSlotOfferIndex === "function" ? shopSlotOfferIndex(slot) : (slot === 0 ? 0 : slot === 4 ? 1 : -1);
+            if (offerIx >= 0) {
+                const off = typeof shopVisibleOffers !== "undefined" ? shopVisibleOffers[offerIx] : null;
+                if (off && off.item) {
+                    const canBuy = player.gold >= off.price;
+                    createButton(L.buyX, L.buyY, L.buyW, L.buyH, "shop", `BUY ${off.price}g`, COLORS.GRAY, () => {
+                        if (typeof tryPurchaseShopVisible === "function") tryPurchaseShopVisible(offerIx);
+                    }, { shopAffordable: canBuy });
+                }
+            } else if (typeof SHOP_MYSTERY_BOXES !== "undefined") {
+                const tier = typeof getMysteryTierIndexForShopSlot === "function"
+                    ? getMysteryTierIndexForShopSlot(slot)
+                    : -1;
+                const box = tier >= 0 ? SHOP_MYSTERY_BOXES[tier] : null;
+                if (box) {
+                    const canBuy = player.gold >= box.price;
+                    createButton(L.buyX, L.buyY, L.buyW, L.buyH, "shop", `${box.price}g`, COLORS.GRAY, () => {
+                        if (typeof tryPurchaseMysteryBox === "function") tryPurchaseMysteryBox(tier);
+                    }, { shopAffordable: canBuy });
+                }
             }
-            createButton(350, 530, 225, 60, "forge", "BACK TO CAMP", COLORS.GRAY, () => changeState("camp"));
         }
+
+        const sellLay = typeof getShopSellLayout === "function" ? getShopSellLayout() : { labelY: 458, rowY: 474 };
+        const sellRowY = sellLay.rowY;
+        const sellables = player.inventory.filter(it =>
+            typeof isItemEquippedAnywhere === "function" && !isItemEquippedAnywhere(it)
+        );
+        sellables.slice(0, 9).forEach((it, idx) => {
+            const sx = 20 + idx * 98;
+            const g = typeof getSellGoldForItem === "function" ? getSellGoldForItem(it) : 10;
+            createButton(sx, sellRowY, 92, 38, "shop", `+${g}`, COLORS.TARNISHED_GOLD, () => {
+                if (typeof sellItemForGold === "function") sellItemForGold(it);
+            }, { noDraw: true, sellItemRef: it });
+        });
     }
     if (state === "inventory") {
         createButton(367, 530, 225, 60, "inventory", "BACK TO CAMP", COLORS.GRAY, () => {
             changeState("camp");
             selectedInvItem = null;
-            salvageConfirm = null;
         });
 
         if (selectedInvItem) {
             const isEq = typeof isItemEquippedAnywhere === "function" && isItemEquippedAnywhere(selectedInvItem);
 
-            if (salvageConfirm) {
-                createButton(650, 300, 100, 40, "inventory", "YES", COLORS.RED, () => salvageItem(selectedInvItem));
-                createButton(770, 300, 100, 40, "inventory", "NO", COLORS.GRAY, () => salvageConfirm = null);
-            } else {
-                const canEquipExtra = typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)
-                    && ACCOUNT_EQUIP_SLOT_IDS.includes(selectedInvItem.type)
-                    && typeof isAccountSlotUnlocked === "function" && isAccountSlotUnlocked(selectedInvItem.type);
-                const canEquipWeaponArmor = selectedInvItem.type === "weapon" || selectedInvItem.type === "armor";
-                const showEquip = isEq || canEquipWeaponArmor || canEquipExtra;
+            const canEquipExtra = typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)
+                && ACCOUNT_EQUIP_SLOT_IDS.includes(selectedInvItem.type)
+                && typeof isAccountSlotUnlocked === "function" && isAccountSlotUnlocked(selectedInvItem.type);
+            const canEquipWeaponArmor = selectedInvItem.type === "weapon" || selectedInvItem.type === "armor";
+            const showEquip = isEq || canEquipWeaponArmor || canEquipExtra;
 
-                if (showEquip) {
-                    createButton(680, 440, 150, 45, "inventory", isEq ? "REMOVE" : "EQUIP", isEq ? COLORS.RED : COLORS.GREEN, () => {
-                        if (selectedInvItem.type === "weapon") {
-                            player.weapon = (player.weapon === selectedInvItem) ? null : selectedInvItem;
-                        } else if (selectedInvItem.type === "armor") {
-                            player.armor = (player.armor === selectedInvItem) ? null : selectedInvItem;
-                        } else if (canEquipExtra) {
-                            const k = selectedInvItem.type;
-                            player[k] = (player[k] === selectedInvItem) ? null : selectedInvItem;
-                        }
-                        calcStats();
-                        const wasEquip = !isEq;
-                        selectedInvItem = null;
-                        if (wasEquip) {
-                            AudioEngine.playEquipClank();
-                            shake = 7;
-                        }
-                    });
-                }
-
-                if (!isEq) {
-                    createButton(680, 385, 150, 45, "inventory", "SALVAGE", "#964B00", () => {
-                        if (selectedInvItem.rarity !== "COMMON") salvageConfirm = true;
-                        else salvageItem(selectedInvItem);
-                    });
-                }
+            if (showEquip) {
+                createButton(680, 440, 150, 45, "inventory", isEq ? "REMOVE" : "EQUIP", isEq ? COLORS.RED : COLORS.GREEN, () => {
+                    if (selectedInvItem.type === "weapon") {
+                        player.weapon = (player.weapon === selectedInvItem) ? null : selectedInvItem;
+                    } else if (selectedInvItem.type === "armor") {
+                        player.armor = (player.armor === selectedInvItem) ? null : selectedInvItem;
+                    } else if (canEquipExtra) {
+                        const k = selectedInvItem.type;
+                        player[k] = (player[k] === selectedInvItem) ? null : selectedInvItem;
+                    }
+                    calcStats();
+                    const wasEquip = !isEq;
+                    selectedInvItem = null;
+                    if (wasEquip) {
+                        AudioEngine.playEquipClank();
+                        shake = 7;
+                    }
+                });
             }
         }
     }
@@ -699,6 +733,7 @@ window.addEventListener('keydown', e => {
 
 function changeState(s) {
     if (state === s) return;
+    if (s !== "shop") shopChestHoverSlot = -1;
     if (state === "account_profile" && s !== "account_profile") {
         accountRoadmapHover = null;
     }
@@ -731,43 +766,6 @@ function gameLoop() {
             }
         } else if (transitionAlpha > 0) {
             transitionAlpha -= 0.05;
-        }
-
-        if (craftingAnimTimer > 0) {
-            // ... (keep crafting logic)
-            craftingAnimTimer--;
-            shake = 3;
-            for (let i = 0; i < 3; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const dist = 120 + Math.random() * 50;
-                fxParticles.push({
-                    x: 480 + Math.cos(angle) * dist,
-                    y: 300 + Math.sin(angle) * dist,
-                    vx: -Math.cos(angle) * 12,
-                    vy: -Math.sin(angle) * 12,
-                    life: 0.5,
-                    color: Math.random() > 0.5 ? COLORS.GOLD : COLORS.WHITE,
-                    size: Math.random() * 3 + 1
-                });
-            }
-            if (craftingAnimTimer === 0) {
-                craftedItem = pendingCraftedItem;
-                const rColor = COLORS[`RARITY_${craftedItem.rarity}`];
-                for (let i = 0; i < 80; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = Math.random() * 15 + 2;
-                    fxParticles.push({
-                        x: 480, y: 300,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        life: 1.0 + Math.random(),
-                        color: rColor,
-                        size: Math.random() * 5 + 2
-                    });
-                }
-                pendingCraftedItem = null;
-                shake = 20;
-            }
         }
 
         // Update FX Particles
@@ -813,7 +811,7 @@ function gameLoop() {
         else if (state === "char_select") drawCharSelect();
         else if (state === "account_profile") drawAccountProfile();
         else if (state === "camp") drawCamp();
-        else if (state === "forge") drawForge();
+        else if (state === "shop") drawShop();
         else if (state === "combat") drawCombat();
         else if (state === "inventory") drawInventory();
         else if (state === "battle_select") drawBattleSelect();

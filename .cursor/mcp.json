@@ -1,0 +1,14 @@
+{
+    "mcpServers": {
+      "gemini-image": {
+        "command": "node",
+        "args": [
+          "C:/Users/Mooncake/Documents/GitHub/fightgame/mcp/gemini-image-bridge/server.mjs"
+        ],
+        "env": {
+          "GEMINI_API_KEY": "AIzaSyCGqJzF6E77-KXw7HvMNOix48s0N3OdaPY",
+          "GEMINI_IMAGE_MODEL": "gemini-2.5-flash-image"
+        }
+      }
+    }
+  }

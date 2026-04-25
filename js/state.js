@@ -33,9 +33,12 @@ let inventoryHoverPt = { x: 0, y: 0 };
 /** Account profile roadmap: mouse hover hit `{ kind:'major', milestone }` or `{ kind:'minor', level }`, else null */
 let accountRoadmapHover = null;
 let accountRoadmapHoverPt = { x: 0, y: 0 };
-let craftedItem = null;
-let craftingAnimTimer = 0;
-let pendingCraftedItem = null;
+/** Two shop slots: `{ item, price }` or `null` if sold out until refresh/fill. */
+let shopVisibleOffers = [null, null];
+/** Permutation of tier indices 0–5 for the six mystery UI slots (local order: slots 1,2,3 then 5,6,7). */
+let shopMysterySlotMap = null;
+/** Merchant screen: hovered mystery-chest slot index (1,2,3,5,6,7), else -1 */
+let shopChestHoverSlot = -1;
 let showBattleTip = !localStorage.getItem('battleTipShown');
 /** Stage-2 autoplay intro; permanent dismiss via localStorage */
 let showAutoplayTip = false;
@@ -80,16 +83,17 @@ function loadAsset(key, path) {
 }
 
 // Begin loading sequence
-loadAsset('forge_bg', 'assets/crafting_window.png');
-loadAsset('ore', 'assets/ore.png');
+loadAsset('shop_bg', 'assets/shop_bg.png');
+loadAsset('gold', 'assets/gold.png');
 loadAsset('background', 'assets/Background_001.png');
 loadAsset('log_bg_img', 'assets/battle_log_background.png');
 loadAsset('camp_battle', 'assets/camp_icon_battle.png');
 loadAsset('camp_champion', 'assets/camp_icon_champion.png');
-loadAsset('camp_craft', 'assets/camp_icon_craft.png');
+loadAsset('camp_shop', 'assets/camp_icon_shop.png');
 loadAsset('fight_btn', 'assets/fight_button.png');
 loadAsset('autoplay_btn', 'assets/autoplay_button.png');
-loadAsset('craft_btn', 'assets/craft_button.png');
+/** Shop mystery chests: 2×3 atlas, row-major Rust→Void (see drawMysteryBoxAtlas in render.js). */
+loadAsset('mystery_boxes_atlas', 'assets/mystery_boxes_all_6.png');
 loadAsset('champion_bg', 'assets/Champion_window_background.png');
 loadAsset('camp_bg', 'assets/main_camp_background.png');
 loadAsset('god_strike_btn', 'assets/god_strike_button.png');

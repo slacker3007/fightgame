@@ -262,7 +262,7 @@ function runTrials(stage, charType, gearBonus, policy, trials) {
 }
 
 /**
- * Approximates gear by depth: sqrt curve (early bosses assume some crafts) plus
+ * Approximates gear by depth: sqrt curve (early bosses assume some shop gear) plus
  * a small floor so slot-10 checks are not "naked vs AETHELGARD".
  */
 function gearForStageFraction(f) {

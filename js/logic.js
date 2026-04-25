@@ -45,7 +45,7 @@ function initPlayer(charType) {
         weapon: null, armor: null,
         ...extraSlots,
         inventory: [],
-        ore: 0,
+        gold: 0,
         points: 0,
         accountBonus: { STR: 0, DEX: 0, STA: 0, LUCK: 0 },
         bonus: { STR: 0, DEX: 0, STA: 0, LUCK: 0 },
@@ -58,6 +58,7 @@ function initPlayer(charType) {
     inventoryError = false;
     scoreDetails = { hits: 0, crits: 0, blocks: 0, dodges: 0, hpBonus: 0, stageClear: 0 };
     addLog(`Welcome, ${charType} Champion.`, COLORS.TARNISHED_GOLD);
+    if (typeof resetShopForNewRun === "function") resetShopForNewRun();
 }
 
 function calcStats() {
@@ -465,11 +466,16 @@ function checkEnd() {
                 maxLvl = Math.min(GAUNTLET_TOTAL_STAGES, maxLvl + 1);
             }
             recordBestStageCleared(currentLvl);
-            player.ore += (currentLvl * 5);
+            const goldGain = typeof getGoldForStageClear === "function"
+                ? getGoldForStageClear(currentLvl)
+                : (24 + currentLvl * 6);
+            player.gold += goldGain;
             player.points += 2;
             player.hp = player.maxHp;
             AudioEngine.playLevelUp();
             levelUpTimer = 120;
+            if (typeof rerollShopVisibleOffersFree === "function") rerollShopVisibleOffersFree();
+            if (typeof shuffleShopMysterySlotMap === "function") shuffleShopMysterySlotMap();
             changeState("camp");
         }
     } else if (player.hp <= 0) {
@@ -495,70 +501,194 @@ function getCraftableItemsForStage(stage, rarity) {
     });
 }
 
-function craftItem() {
+function resetShopForNewRun() {
+    shopVisibleOffers = [null, null];
+    shopMysterySlotMap = null;
+}
+
+function shuffleShopMysterySlotMap() {
+    const tierCount = (typeof SHOP_MYSTERY_BOXES !== "undefined" && Array.isArray(SHOP_MYSTERY_BOXES))
+        ? SHOP_MYSTERY_BOXES.length
+        : 6;
+    const fallback = 1 / Math.max(1, tierCount);
+    const weights = (typeof SHOP_MYSTERY_DISPLAY_WEIGHTS !== "undefined"
+        && Array.isArray(SHOP_MYSTERY_DISPLAY_WEIGHTS)
+        && SHOP_MYSTERY_DISPLAY_WEIGHTS.length === tierCount)
+        ? SHOP_MYSTERY_DISPLAY_WEIGHTS
+        : Array(tierCount).fill(fallback);
+    const sampleTier = () => {
+        const r = Math.random();
+        let t = 0;
+        for (let i = 0; i < weights.length; i++) {
+            t += Math.max(0, weights[i]);
+            if (r < t) return i;
+        }
+        return Math.max(0, weights.length - 1);
+    };
+    shopMysterySlotMap = Array.from({ length: 6 }, sampleTier);
+}
+
+/** Slot 0 / 4 = fixed-price offers; else mystery. */
+function shopSlotOfferIndex(slot) {
+    if (slot === 0) return 0;
+    if (slot === 4) return 1;
+    return -1;
+}
+
+/** Local mystery index 0–5 for slots 1,2,3,5,6,7. */
+function shopSlotMysteryLocalIndex(slot) {
+    if (slot === 1 || slot === 2 || slot === 3) return slot - 1;
+    if (slot === 5 || slot === 6 || slot === 7) return slot - 2;
+    return -1;
+}
+
+/** Tier index into SHOP_MYSTERY_BOXES for this grid slot. */
+function getMysteryTierIndexForShopSlot(slot) {
+    const local = shopSlotMysteryLocalIndex(slot);
+    if (local < 0) return -1;
+    if (!shopMysterySlotMap || shopMysterySlotMap.length !== 6) return local;
+    return shopMysterySlotMap[local];
+}
+
+function rollShopVisibleSlot(stage, excludeItemName) {
+    let pool = getCraftableItemsForStage(stage);
+    if (!pool.length) return null;
+    if (excludeItemName) {
+        const filtered = pool.filter((it) => it.name !== excludeItemName);
+        if (filtered.length) pool = filtered;
+    }
+    for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = pool[i];
+        pool[i] = pool[j];
+        pool[j] = t;
+    }
+    const pick = pool[0];
+    const item = JSON.parse(JSON.stringify(pick));
+    const price = typeof getShopVisibleListPrice === "function" ? getShopVisibleListPrice(item) : 45;
+    return { item, price };
+}
+
+function ensureShopVisibleSlotsFilled() {
+    if (typeof shopVisibleOffers === "undefined") return;
+    const stage = getCurrentCraftStageProgress();
+    if (shopMysterySlotMap == null && typeof shuffleShopMysterySlotMap === "function") {
+        shuffleShopMysterySlotMap();
+    }
+    for (let i = 0; i < 2; i++) {
+        if (!shopVisibleOffers[i]) {
+            const ex = i === 1 && shopVisibleOffers[0] && shopVisibleOffers[0].item
+                ? shopVisibleOffers[0].item.name
+                : null;
+            shopVisibleOffers[i] = rollShopVisibleSlot(stage, ex);
+        }
+    }
+    if (shopVisibleOffers[0] && shopVisibleOffers[1] && shopVisibleOffers[0].item && shopVisibleOffers[1].item
+        && shopVisibleOffers[0].item.name === shopVisibleOffers[1].item.name) {
+        shopVisibleOffers[1] = rollShopVisibleSlot(
+            stage,
+            shopVisibleOffers[0].item.name
+        );
+    }
+}
+
+/** Reroll both fixed-price shop rows (no gold). Used after stage wins and after paid refresh. */
+function rerollShopVisibleOffersFree() {
+    if (typeof shopVisibleOffers === "undefined") return;
+    const stage = getCurrentCraftStageProgress();
+    shopVisibleOffers[0] = rollShopVisibleSlot(stage, null);
+    shopVisibleOffers[1] = rollShopVisibleSlot(
+        stage,
+        shopVisibleOffers[0] && shopVisibleOffers[0].item ? shopVisibleOffers[0].item.name : null
+    );
+}
+
+function tryPurchaseShopVisible(slotIndex) {
+    const off = shopVisibleOffers[slotIndex];
+    if (!off || !off.item) return;
+
     if (player.inventory.length >= INV_LIMIT) {
         inventoryError = true;
         addLog("Inventory Full!", COLORS.BLOOD_RED);
         return;
     }
+    if (player.gold < off.price) {
+        addLog(`Need ${off.price} gold.`, COLORS.BLOOD_RED);
+        spawnText("NEED GOLD", 480, 300, COLORS.RED);
+        return;
+    }
+    inventoryError = false;
+    player.gold -= off.price;
+    player.inventory.push(JSON.parse(JSON.stringify(off.item)));
+    shopVisibleOffers[slotIndex] = null;
+    AudioEngine.playLevelUp();
+    spawnText("BOUGHT!", 480, 280, COLORS.GOLD);
+    addLog(`Bought ${off.item.name} for ${off.price} gold.`, COLORS.TARNISHED_GOLD);
+}
 
+function rollItemFromMysteryBox(boxIndex) {
+    const box = typeof SHOP_MYSTERY_BOXES !== "undefined" ? SHOP_MYSTERY_BOXES[boxIndex] : null;
+    if (!box) return null;
     const craftStage = getCurrentCraftStageProgress();
     const unlockedPool = getCraftableItemsForStage(craftStage);
-    if (unlockedPool.length === 0) {
-        addLog(`No craftable items unlocked at stage ${craftStage}.`, COLORS.BLOOD_RED);
-        spawnText("FORGE LOCKED", 480, 325, COLORS.RED);
-        return;
+    if (!unlockedPool.length) return null;
+
+    let rarity = typeof sampleMysteryRarityFromBox === "function"
+        ? sampleMysteryRarityFromBox(box)
+        : "COMMON";
+    if (rarity === "LEGENDARY" && player.baseLUCK < 15) {
+        rarity = "EPIC";
     }
-
-    const COST = 9;
-    if (player.ore < COST) {
-        addLog(`Need ${COST} Ore!`, COLORS.BLOOD_RED);
-        spawnText("NEED ORE", 480, 325, COLORS.RED);
-        return;
-    }
-    player.ore -= COST;
-    inventoryError = false;
-
-    const epicCh = 0.05 + (player.total.LUCK * 0.01);
-    const rareCh = 0.15 + (player.total.LUCK * 0.02);
-    const legCh = (player.baseLUCK >= 15) ? 0.02 : 0;
-    const roll = Math.random();
-
-    let rarity = "COMMON";
-    if (roll < legCh) rarity = "LEGENDARY";
-    else if (roll < legCh + epicCh) rarity = "EPIC";
-    else if (roll < legCh + epicCh + rareCh) rarity = "RARE";
 
     let possible = getCraftableItemsForStage(craftStage, rarity);
     if (possible.length === 0) {
         possible = unlockedPool;
     }
-    if (possible.length === 0) {
-        player.ore += COST;
-        addLog("Craft failed: no eligible item pool.", COLORS.BLOOD_RED);
-        spawnText("NO ITEMS", 480, 325, COLORS.RED);
-        return;
-    }
-    const newItem = JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
-    pendingCraftedItem = newItem;
-    AudioEngine.playCast();
-    craftingAnimTimer = 60; // 1 second animation
+    if (possible.length === 0) return null;
+    return JSON.parse(JSON.stringify(possible[Math.floor(Math.random() * possible.length)]));
 }
 
-function resolveCrafting(keep) {
-    if (!craftedItem) return;
+function tryPurchaseMysteryBox(boxIndex) {
+    const box = typeof SHOP_MYSTERY_BOXES !== "undefined" ? SHOP_MYSTERY_BOXES[boxIndex] : null;
+    if (!box) return;
 
-    if (keep) {
-        player.inventory.push(craftedItem);
-        AudioEngine.playLevelUp(); // Triumph sound for keeping
-        spawnText("CRAFTED!", 480, 280, COLORS.GOLD);
-    } else {
-        const refund = craftedItem.rarity === "EPIC" ? 8 : (craftedItem.rarity === "RARE" ? 5 : 3);
-        player.ore += refund;
-        AudioEngine.playBlock(); // Metallic sound for salvage
-        spawnText("SALVAGED", 480, 280, COLORS.CYAN);
+    if (player.inventory.length >= INV_LIMIT) {
+        inventoryError = true;
+        addLog("Inventory Full!", COLORS.BLOOD_RED);
+        return;
     }
-    craftedItem = null;
+    if (player.gold < box.price) {
+        addLog(`Need ${box.price} gold.`, COLORS.BLOOD_RED);
+        spawnText("NEED GOLD", 480, 300, COLORS.RED);
+        return;
+    }
+
+    const newItem = rollItemFromMysteryBox(boxIndex);
+    if (!newItem) {
+        addLog("No eligible items for this chest.", COLORS.BLOOD_RED);
+        return;
+    }
+
+    inventoryError = false;
+    player.gold -= box.price;
+    player.inventory.push(newItem);
+    AudioEngine.playCast();
+    spawnText("OPENED!", 480, 280, COLORS.GOLD);
+    addLog(`Opened ${box.label}: ${newItem.name}.`, COLORS.TARNISHED_GOLD);
+}
+
+function performShopRefresh() {
+    const cost = typeof getShopRefreshCost === "function" ? getShopRefreshCost(maxLvl) : 44;
+    if (player.gold < cost) {
+        addLog(`Need ${cost} gold to refresh.`, COLORS.BLOOD_RED);
+        spawnText("NEED GOLD", 480, 300, COLORS.RED);
+        return;
+    }
+    player.gold -= cost;
+    rerollShopVisibleOffersFree();
+    if (typeof shuffleShopMysterySlotMap === "function") shuffleShopMysterySlotMap();
+    AudioEngine.playClick();
+    addLog(`Shop refreshed (-${cost} gold).`, COLORS.CYAN);
 }
 
 function isItemEquippedAnywhere(item) {
@@ -572,17 +702,14 @@ function isItemEquippedAnywhere(item) {
     return false;
 }
 
-function salvageItem(item) {
+function sellItemForGold(item) {
     if (!item || isItemEquippedAnywhere(item)) return;
-
-    const refund = item.rarity === "EPIC" ? 8 : (item.rarity === "RARE" ? 5 : 3);
-    player.ore += refund;
+    const g = typeof getSellGoldForItem === "function" ? getSellGoldForItem(item) : 10;
+    player.gold += g;
     player.inventory = player.inventory.filter(i => i !== item);
     inventoryError = false;
-
-    addLog(`Salvaged ${item.name} for ${refund} Ore.`, COLORS.DIM_GRAY);
+    addLog(`Sold ${item.name} for ${g} gold.`, COLORS.DIM_GRAY);
     selectedInvItem = null;
-    salvageConfirm = null;
 }
 
 function addLog(txt, col) { log.push({ txt, col }); if (log.length > 50) log.shift(); }

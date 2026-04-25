@@ -1,0 +1,25 @@
+Asset rollout QA checklist (run after any asset regen)
+======================================================
+
+Pre-flight
+- [ ] Run: node scripts/check-asset-paths.mjs  (expect missingCount: 0)
+- [ ] Optional backup: copy assets/*.png to assets/_backup_pre_rollout_<date>/
+
+Per-asset technical
+- [ ] PNG format; no corrupt decode in browser devtools Network
+- [ ] Icons / slots / items: transparent background (check alpha in image editor)
+- [ ] shop_bg: full-bleed background; center area not overly busy for UI overlay
+- [ ] Readable at ~24–32px for gold, small UI icons
+- [ ] Chest tier 0→5 reads as progression (rust → void)
+
+In-game (manual)
+- [ ] Camp: shop / battle / champion icons load
+- [ ] Shop: gold icon, shop_bg, mystery chest art, visible offers
+- [ ] Inventory / equip: slot frames + item icons align, no stretched garbage
+- [ ] Combat: autoplay button, fight button, enemy portrait for current stage
+- [ ] Champion: stat icons + player stat portraits
+
+MCP-only regen (when Gemini quota works)
+- [ ] Use docs/asset_prompt_library.json entries with gemini-image MCP generate_image
+- [ ] output_directory: <repo>/assets  file_name: <basename without .png>
+- [ ] force_conversion_type: png, skip_compression_and_resizing: true (recommended for first pass)

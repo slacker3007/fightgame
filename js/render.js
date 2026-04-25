@@ -174,6 +174,91 @@ function drawStyledBtn(x, y, w, h, txt, baseCol) {
     ctx.shadowBlur = 0;
 }
 
+/** Shop / merchant controls: muted leather-and-iron (Darkest Dungeon–adjacent mood), not neon arcade. */
+function drawShopGothicBtn(x, y, w, h, txt, opts) {
+    const affordable = !opts || opts.affordable !== false;
+    ctx.save();
+    ctx.shadowBlur = 0;
+    if (!affordable) ctx.globalAlpha = 0.55;
+    const ox = x - 1;
+    const oy = y - 1;
+    const ow = w + 2;
+    const oh = h + 2;
+    ctx.strokeStyle = affordable ? "rgba(28, 18, 16, 0.95)" : "rgba(22, 22, 28, 0.85)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ox + 0.5, oy + 0.5, ow - 1, oh - 1);
+    ctx.strokeStyle = "rgba(90, 42, 38, 0.55)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ox + 2.5, oy + 2.5, ow - 5, oh - 5);
+    const g = ctx.createLinearGradient(x, y, x, y + h);
+    if (affordable) {
+        g.addColorStop(0, "#4a3c34");
+        g.addColorStop(0.35, "#2e2620");
+        g.addColorStop(1, "#12100e");
+    } else {
+        g.addColorStop(0, "#353540");
+        g.addColorStop(0.35, "#222228");
+        g.addColorStop(1, "#0e0e12");
+    }
+    ctx.fillStyle = g;
+    ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+    for (let n = 0; n < 18; n++) {
+        const rx = x + 3 + Math.random() * (w - 6);
+        const ry = y + 3 + Math.random() * (h - 6);
+        ctx.fillStyle = `rgba(0,0,0,${0.04 + Math.random() * 0.07})`;
+        ctx.fillRect(rx, ry, 1 + Math.random() * 2, 1);
+    }
+    ctx.strokeStyle = "rgba(180, 155, 120, 0.22)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
+    ctx.fillStyle = affordable ? "#e8dcc8" : "#8a8580";
+    ctx.font = "bold 13px Ubuntu, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(txt || "", x + w / 2, y + h / 2 + 0.5);
+    ctx.textBaseline = "alphabetic";
+    if (!affordable) ctx.globalAlpha = 1;
+    ctx.restore();
+}
+
+/** Header refresh (paid); red treatment for visibility between title and mute. */
+function drawShopRefreshRedBtn(x, y, w, h, txt, affordable) {
+    const ok = affordable !== false;
+    ctx.save();
+    if (!ok) ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = ok ? "rgba(120, 28, 28, 0.95)" : "rgba(60, 50, 50, 0.85)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    const g = ctx.createLinearGradient(x, y, x, y + h);
+    if (ok) {
+        g.addColorStop(0, "#6a2020");
+        g.addColorStop(0.4, "#4a1418");
+        g.addColorStop(1, "#1a0a0c");
+    } else {
+        g.addColorStop(0, "#3a3030");
+        g.addColorStop(1, "#181418");
+    }
+    ctx.fillStyle = g;
+    ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+    ctx.fillStyle = ok ? "#f0d8d8" : "#9a9090";
+    ctx.font = "bold 12px Ubuntu, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(txt || "", x + w / 2, y + h / 2 + 0.5);
+    ctx.textBaseline = "alphabetic";
+    if (!ok) ctx.globalAlpha = 1;
+    ctx.restore();
+}
+
+function drawShopVignette() {
+    const rg = ctx.createRadialGradient(480, 340, 120, 480, 340, 520);
+    rg.addColorStop(0, "rgba(0,0,0,0)");
+    rg.addColorStop(0.55, "rgba(0,0,0,0.25)");
+    rg.addColorStop(1, "rgba(8,4,6,0.72)");
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, 960, 650);
+}
+
 /** Autoplay control: vector plate (no bitmap mat) so it sits cleanly on combat art */
 function drawAutoplayPlate(x, y, w, h) {
     ctx.save();
@@ -305,6 +390,36 @@ function drawSpriteStrip8(key, x, y, w, h, frameIndex, label, color) {
         ctx.drawImage(asset, fi * sw, 0, sw, sh, x, y, w, h);
     } catch (e) {
         drawSprite(key, x, y, w, h, label, color);
+    }
+}
+
+/** Shop mystery chest atlas: 3 cols × 2 rows, index 0–5 = Rust, Iron, Steel, Silver, Gold, Void. */
+function drawMysteryBoxAtlas(bi, dx, dy, dw, dh) {
+    const atlas = assets.mystery_boxes_atlas;
+    if (!atlas || !(atlas.complete || (atlas.readyState !== undefined && atlas.readyState >= 1))) {
+        return false;
+    }
+    const cols = 3;
+    const rows = 2;
+    if (atlas.naturalWidth < cols * 2 || atlas.naturalHeight < rows * 2) {
+        return false;
+    }
+    const cellW = atlas.naturalWidth / cols;
+    const cellH = atlas.naturalHeight / rows;
+    const fi = ((bi % 6) + 6) % 6;
+    const col = fi % cols;
+    const row = Math.floor(fi / cols);
+    const insetX = cellW * 0.08;
+    const insetY = cellH * 0.06;
+    const sx = col * cellW + insetX;
+    const sy = row * cellH + insetY;
+    const sw = cellW - 2 * insetX;
+    const sh = cellH - 2 * insetY;
+    try {
+        ctx.drawImage(atlas, sx, sy, sw, sh, dx, dy, dw, dh);
+        return true;
+    } catch (e) {
+        return false;
     }
 }
 
@@ -755,8 +870,8 @@ function buildChampionStatTooltip(stat) {
             title: "LUCK — Fortune",
             lines: [
                 `Crit chance ≈ ${critPct}% (capped at 50%, LUCK×3% per point).`,
-                `Forge odds scale with total LUCK (e.g. epic ~${Math.min(99, Math.round(epicCh * 100))}%, rare ~${Math.min(99, Math.round(rareCh * 100))}%).`,
-                player.baseLUCK >= 15 ? "Base LUCK 15+: legendary craft chance unlocked." : "Reach base LUCK 15 to unlock legendary crafts."
+                `Mystery chest odds scale with total LUCK (e.g. epic ~${Math.min(99, Math.round(epicCh * 100))}%, rare ~${Math.min(99, Math.round(rareCh * 100))}%).`,
+                player.baseLUCK >= 15 ? "Base LUCK 15+: legendary rolls from chests unlocked." : "Reach base LUCK 15 for legendary chest results."
             ]
         };
     }
@@ -1778,7 +1893,7 @@ function drawCharSelect() {
     const descriptions = [
         "High strength, high damage.",
         "High dexterity, high dodge.",
-        "High luck, high crit & craft rate.",
+        "High luck, high crit & better chest luck.",
         "High stamina, high health."
     ];
 
@@ -1839,36 +1954,41 @@ function drawCamp() {
     ctx.shadowBlur = 0;
     */
 
-    // Ore Display - Moved under Forge/Craft icon (which is at y=150, h=297 -> bottom y=447)
-    const oreY = 460;
+    const goldY = 460;
     ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(410, oreY, 140, 40);
-    ctx.strokeStyle = COLORS.GOLD;
-    ctx.strokeRect(410, oreY, 140, 40);
+    ctx.fillRect(400, goldY, 160, 40);
+    ctx.strokeStyle = "rgba(140, 120, 90, 0.65)";
+    ctx.strokeRect(400, goldY, 160, 40);
 
-    ctx.fillStyle = COLORS.CYAN;
+    ctx.fillStyle = "#a89880";
     ctx.textAlign = "left";
-    ctx.font = "bold 20px Ubuntu"; // Ensure font is set for ore text
-    ctx.fillText(`ORE: ${player.ore}`, 450, oreY + 28);
-    if (assets['ore'] && assets['ore'].complete) ctx.drawImage(assets['ore'], 415, oreY + 7, 25, 25);
-    
-    // Score Display
+    ctx.font = "bold 18px Ubuntu, sans-serif";
+    ctx.fillText(`GOLD: ${player.gold}`, 440, goldY + 28);
+    if (assets.gold && assets.gold.complete) {
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(assets.gold, 405, goldY + 6, 28, 28);
+        ctx.globalAlpha = 1;
+    }
+
     ctx.textAlign = "center";
-    ctx.fillStyle = COLORS.GOLD;
-    ctx.font = "bold 20px Ubuntu";
+    ctx.fillStyle = "#c4a574";
+    ctx.font = "bold 18px Ubuntu, sans-serif";
     ctx.fillText(`SCORE: ${score}`, 480, 30);
 
     drawAccountHeaderMini();
 
-    const iconMap = { "CHAMPION": "camp_champion", "FORGE": "camp_craft", "BATTLE": "camp_battle" };
+    const iconMap = { "CHAMPION": "camp_champion", "SHOP": "camp_shop", "BATTLE": "camp_battle" };
+    let cheapestShop = 30;
+    if (typeof SHOP_MYSTERY_BOXES !== "undefined" && SHOP_MYSTERY_BOXES.length) {
+        cheapestShop = Math.min(...SHOP_MYSTERY_BOXES.map((b) => (b && typeof b.price === "number" ? b.price : Infinity)));
+    }
     uiButtons.forEach(btn => {
         if (btn.state === "camp") {
             const assetKey = iconMap[btn.label];
             if (assets[assetKey] && assets[assetKey].complete) {
-                // Glow if points available or enough ore for crafting
-                if ((btn.label === "CHAMPION" && player.points > 0) || (btn.label === "FORGE" && player.ore >= 10)) {
-                    ctx.shadowBlur = 20;
-                    ctx.shadowColor = COLORS.GOLD;
+                if ((btn.label === "CHAMPION" && player.points > 0) || (btn.label === "SHOP" && player.gold >= cheapestShop)) {
+                    ctx.shadowBlur = 16;
+                    ctx.shadowColor = "rgba(160, 110, 60, 0.55)";
                 }
                 ctx.drawImage(assets[assetKey], btn.x, btn.y, btn.w, btn.h);
                 ctx.shadowBlur = 0;
@@ -1880,116 +2000,226 @@ function drawCamp() {
     drawLevelUp();
 }
 
-function drawForge() {
-    if (assets['forge_bg'] && assets['forge_bg'].complete) ctx.drawImage(assets['forge_bg'], 2, 0, 956, 650);
-
-    if (craftingAnimTimer > 0) {
-        ctx.textAlign = "center";
-        ctx.font = "bold 36px Ubuntu";
-        ctx.fillStyle = COLORS.WHITE;
-        ctx.fillText("Forging...", 480, 320);
-    } else if (craftedItem) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(0, 0, 960, 650);
-        ctx.textAlign = "center"; ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 36px Ubuntu";
-        ctx.fillText("ITEM FORGED!", 480, 150);
-
-        drawSlot(420, 200, "", craftedItem, 120, { useForgedFrame: false });
-
-        ctx.fillStyle = COLORS[`RARITY_${craftedItem.rarity}`]; ctx.font = "bold 24px Ubuntu";
-        ctx.fillText(craftedItem.name, 480, 360);
-
-        let sy = 400; ctx.font = "18px Ubuntu"; ctx.fillStyle = COLORS.WHITE;
-        ["STR", "DEX", "STA", "LUCK"].forEach(s => {
-            if (craftedItem[s]) {
-                ctx.fillText(`${s}: +${craftedItem[s]}`, 480, sy);
-                sy += 25;
-            }
-        });
+function drawShop() {
+    if (assets.shop_bg && assets.shop_bg.complete) {
+        ctx.drawImage(assets.shop_bg, 2, 0, 956, 650);
     } else {
-        ctx.textAlign = "center"; ctx.fillStyle = COLORS.WHITE; ctx.font = "bold 24px Ubuntu";
-        ctx.fillText(`${player.ore} ORE AVAILABLE`, 480, 410);
-        
-        ctx.fillStyle = COLORS.GOLD; ctx.font = "bold 18px Ubuntu";
-        ctx.fillText("COST: 10 ORE", 480, 440);
+        ctx.fillStyle = "rgba(12, 10, 22, 0.96)";
+        ctx.fillRect(0, 0, 960, 650);
+    }
+    drawShopVignette();
 
-        // Display Odds
-        const epicCh = 0.05 + (player.total.LUCK * 0.01);
-        const rareCh = 0.15 + (player.total.LUCK * 0.02);
-        ctx.font = "bold 14px Ubuntu";
-        ctx.fillStyle = COLORS.RARITY_EPIC;
-        ctx.fillText(`EPIC CHANCE: ${Math.round(epicCh * 100)}%`, 400, 380);
-        ctx.fillStyle = COLORS.RARITY_RARE;
-        ctx.fillText(`RARE CHANCE: ${Math.round(rareCh * 100)}%`, 560, 380);
+    drawAccountHeaderMini();
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#c4a574";
+    ctx.font = "bold 18px Ubuntu, sans-serif";
+    ctx.fillText(`SCORE: ${score}`, 480, 24);
+    ctx.fillStyle = "#dcd2c4";
+    ctx.font = "bold 26px 'New Rocker', Pirata One, Ubuntu, sans-serif";
+    ctx.fillText("MERCHANT", 480, 50);
 
-        if (player.baseLUCK >= 15) {
-            const legCh = 0.02;
-            ctx.fillStyle = COLORS.RARITY_LEGENDARY;
-            ctx.fillText(`LEGENDARY CHANCE: ${Math.round(legCh * 100)}%`, 480, 360);
-        }
-
-        const craftStage = typeof getCurrentCraftStageProgress === "function" ? getCurrentCraftStageProgress() : 1;
-        const typeLabelMap = {
-            weapon: "Weapon",
-            armor: "Armor",
-            helm: "Helm",
-            shield: "Shield",
-            gloves: "Gloves",
-            boots: "Boots",
-            ring: "Ring",
-            necklace: "Necklace",
-            banner: "Banner"
-        };
-        const typeUnlockEntries = typeof ITEM_TYPE_MIN_STAGE !== "undefined"
-            ? Object.entries(ITEM_TYPE_MIN_STAGE)
-            : [];
-
-        ctx.textAlign = "left";
-        ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-        ctx.fillRect(70, 170, 270, 320);
-        ctx.strokeStyle = COLORS.GOLD;
-        ctx.strokeRect(70, 170, 270, 320);
-
-        ctx.fillStyle = COLORS.CREAM;
-        ctx.font = "bold 17px Ubuntu";
-        ctx.fillText("TYPE UNLOCKS", 84, 198);
-        ctx.font = "12px Ubuntu";
-        ctx.fillStyle = COLORS.CYAN;
-        ctx.fillText(`Current Stage: ${craftStage}`, 84, 216);
-
-        let unlockY = 240;
-        ctx.font = "bold 12px Ubuntu";
-        typeUnlockEntries.forEach(([type, minStage]) => {
-            const unlocked = typeof isCraftTypeUnlockedAtStage === "function"
-                ? isCraftTypeUnlockedAtStage(type, craftStage)
-                : craftStage >= minStage;
-            ctx.fillStyle = unlocked ? COLORS.GREEN : COLORS.GRAY;
-            const label = typeLabelMap[type] || type.toUpperCase();
-            const status = unlocked ? "AVAILABLE" : `UNLOCKS ${minStage}`;
-            ctx.fillText(`${label}: ${status}`, 84, unlockY);
-            unlockY += 26;
+    let minShopPrice = Infinity;
+    for (let s = 0; s < 2; s++) {
+        const off = typeof shopVisibleOffers !== "undefined" ? shopVisibleOffers[s] : null;
+        if (off && off.item && typeof off.price === "number") minShopPrice = Math.min(minShopPrice, off.price);
+    }
+    if (typeof SHOP_MYSTERY_BOXES !== "undefined") {
+        SHOP_MYSTERY_BOXES.forEach(b => {
+            if (b && typeof b.price === "number") minShopPrice = Math.min(minShopPrice, b.price);
         });
+    }
+    const refreshC = typeof getShopRefreshCost === "function" ? getShopRefreshCost(maxLvl) : 44;
+    minShopPrice = Math.min(minShopPrice, refreshC);
+    const goldStrained = Number.isFinite(minShopPrice) && player.gold < minShopPrice;
 
-        if (inventoryError) {
-            ctx.fillStyle = "rgba(255, 0, 0, 0.2)"; ctx.fillRect(330, 530, 300, 80);
-            ctx.fillStyle = COLORS.RED; ctx.font = "bold 22px Ubuntu"; ctx.fillText("INVENTORY FULL!", 480, 565);
-            ctx.font = "14px Ubuntu"; ctx.fillText("(Click anywhere to dismiss)", 480, 585);
+    ctx.save();
+    ctx.font = "bold 16px Ubuntu, sans-serif";
+    const goldPulse = goldStrained ? 0.82 + 0.08 * Math.sin(Date.now() / 420) : 1;
+    ctx.globalAlpha = goldPulse;
+    ctx.fillStyle = goldStrained ? "#7a7068" : "#a89880";
+    ctx.fillText(`GOLD: ${player.gold}`, 480, 78);
+    if (assets.gold && assets.gold.complete) {
+        ctx.globalAlpha = goldPulse * 0.92;
+        ctx.drawImage(assets.gold, 400, 64, 26, 26);
+    }
+    ctx.restore();
+
+    if (typeof SHOP_REFRESH_TOP_BTN !== "undefined") {
+        const rb = SHOP_REFRESH_TOP_BTN;
+        const canRef = player.gold >= refreshC;
+        const refLabel = `REFRESH (${refreshC}g)`;
+        drawShopRefreshRedBtn(rb.x, rb.y, rb.w, rb.h, refLabel, canRef);
+    }
+
+    const craftStage = typeof getCurrentCraftStageProgress === "function" ? getCurrentCraftStageProgress() : 1;
+    const typeLabelMap = {
+        weapon: "Weapon",
+        armor: "Armor",
+        helm: "Helm",
+        shield: "Shield",
+        gloves: "Gloves",
+        boots: "Boots",
+        ring: "Ring",
+        necklace: "Necklace",
+        banner: "Banner"
+    };
+    const typeUnlockEntries = typeof ITEM_TYPE_MIN_STAGE !== "undefined"
+        ? Object.entries(ITEM_TYPE_MIN_STAGE).sort((a, b) => {
+            const sa = a[1];
+            const sb = b[1];
+            if (sa !== sb) return sa - sb;
+            const la = typeLabelMap[a[0]] || a[0];
+            const lb = typeLabelMap[b[0]] || b[0];
+            return la.localeCompare(lb);
+        })
+        : [];
+
+    const SL = typeof getShopScreenLayout === "function" ? getShopScreenLayout() : null;
+    const sb = SL ? SL.sidebar : { x: 70, y: 88, w: 270, h: 280 };
+    const ix = SL ? SL.innerX : 84;
+    const titleY = SL ? SL.titleY : sb.y + 28;
+    const stageY = SL ? SL.stageY : sb.y + 46;
+    const listStart = SL ? SL.unlockListStartY : sb.y + 70;
+    const lineH = SL ? SL.unlockLineH : 24;
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = COLORS.CHAMPION_PANEL_GLASS;
+    ctx.fillRect(sb.x, sb.y, sb.w, sb.h);
+    strokeChampionIronFrame(sb.x, sb.y, sb.w, sb.h);
+
+    ctx.fillStyle = "#e8dcc8";
+    ctx.font = "bold 15px 'New Rocker', Ubuntu, sans-serif";
+    ctx.fillText("TYPE UNLOCKS", ix, titleY);
+    ctx.font = "12px Ubuntu, sans-serif";
+    ctx.fillStyle = "#9a8b78";
+    ctx.fillText(`Current Stage: ${craftStage}`, ix, stageY);
+
+    let unlockY = listStart;
+    ctx.font = "bold 11px Ubuntu, sans-serif";
+    typeUnlockEntries.forEach(([type, minStage]) => {
+        const unlocked = typeof isCraftTypeUnlockedAtStage === "function"
+            ? isCraftTypeUnlockedAtStage(type, craftStage)
+            : craftStage >= minStage;
+        ctx.fillStyle = unlocked ? "#8faa7a" : "#6a5e56";
+        const label = typeLabelMap[type] || type.toUpperCase();
+        const status = unlocked ? "AVAILABLE" : `UNLOCKS ${minStage}`;
+        ctx.fillText(`${label}: ${status}`, ix, unlockY);
+        unlockY += lineH;
+    });
+
+    const gridO = typeof SHOP_SLOT_GRID !== "undefined" ? SHOP_SLOT_GRID : { originX: 364, originY: 132 };
+    const wtx = SL ? SL.waresTitleX : gridO.originX;
+    const wty = SL ? SL.waresTitleY : gridO.originY - 18;
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#dcd2c4";
+    ctx.font = "bold 15px 'New Rocker', Ubuntu, sans-serif";
+    ctx.fillText("WARES & CHESTS", wtx, wty);
+
+    for (let slot = 0; slot < 8; slot++) {
+        const L = typeof getShopSlotLayout === "function" ? getShopSlotLayout(slot) : null;
+        if (!L) continue;
+        ctx.strokeStyle = "rgba(55, 48, 42, 0.55)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(L.x + 0.5, L.y + 0.5, L.cellW - 1, L.cellH - 1);
+
+        const offerIx = typeof shopSlotOfferIndex === "function" ? shopSlotOfferIndex(slot) : (slot === 0 ? 0 : slot === 4 ? 1 : -1);
+        if (offerIx >= 0) {
+            const off = typeof shopVisibleOffers !== "undefined" ? shopVisibleOffers[offerIx] : null;
+            if (off && off.item) {
+                ctx.textAlign = "center";
+                ctx.fillStyle = COLORS[`RARITY_${off.item.rarity}`];
+                ctx.font = "bold 11px Ubuntu, sans-serif";
+                ctx.fillText(off.item.name, L.cx, L.labelY + 4);
+                drawSlot(L.slotX, L.slotY, "", off.item, L.slotSize, { useForgedFrame: true });
+            } else {
+                ctx.fillStyle = "rgba(18, 14, 20, 0.92)";
+                ctx.fillRect(L.slotX, L.slotY, L.slotSize, L.slotSize);
+                strokeChampionIronFrame(L.slotX, L.slotY, L.slotSize, L.slotSize);
+                ctx.fillStyle = "#6a5e56";
+                ctx.font = "12px Ubuntu, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("SOLD OUT", L.cx, L.slotY + L.slotSize * 0.55);
+            }
+        } else if (typeof SHOP_MYSTERY_BOXES !== "undefined") {
+            const tier = typeof getMysteryTierIndexForShopSlot === "function"
+                ? getMysteryTierIndexForShopSlot(slot)
+                : -1;
+            const box = tier >= 0 ? SHOP_MYSTERY_BOXES[tier] : null;
+            if (!box) continue;
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#e8dcc8";
+            ctx.font = "bold 9px Ubuntu, sans-serif";
+            ctx.fillText(box.label, L.cx, L.labelY + 4);
+            ctx.save();
+            ctx.globalAlpha = 0.94;
+            const drawn = drawMysteryBoxAtlas(tier, L.chestX, L.chestY, L.chestW, L.chestH);
+            ctx.restore();
+            if (!drawn) {
+                const fallback = assets[box.assetKey];
+                if (fallback && fallback.complete) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.94;
+                    ctx.drawImage(fallback, L.chestX, L.chestY, L.chestW, L.chestH);
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = "rgba(22, 18, 24, 0.95)";
+                    ctx.fillRect(L.chestX, L.chestY, L.chestW, L.chestH);
+                    strokeChampionIronFrame(L.chestX, L.chestY, L.chestW, L.chestH);
+                }
+            }
         }
     }
 
+    const sellLay = typeof getShopSellLayout === "function" ? getShopSellLayout() : { labelY: 458, rowY: 474 };
+    const sellLabelY = sellLay.labelY;
+    const sellRowY = sellLay.rowY;
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#c9b8a4";
+    ctx.font = "bold 11px Ubuntu, sans-serif";
+    ctx.fillText("SELL", 20, sellLabelY);
+    const sellables = player.inventory.filter(it =>
+        typeof isItemEquippedAnywhere === "function" && !isItemEquippedAnywhere(it)
+    );
+    sellables.slice(0, 9).forEach((it, idx) => {
+        const sx = 20 + idx * 98;
+        const sy = sellRowY;
+        ctx.fillStyle = "rgba(20, 16, 22, 0.94)";
+        ctx.fillRect(sx, sy, 92, 38);
+        ctx.strokeStyle = "rgba(90, 42, 38, 0.5)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 0.5, sy + 0.5, 91, 37);
+        drawSprite(it.name, sx + 4, sy + 2, 32, 32, it.name.substring(0, 2), COLORS[`RARITY_${it.rarity}`]);
+        const g = typeof getSellGoldForItem === "function" ? getSellGoldForItem(it) : 10;
+        ctx.fillStyle = "#8faa7a";
+        ctx.font = "bold 10px Ubuntu, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(`+${g}g`, sx + 40, sy + 24);
+        ctx.textAlign = "center";
+    });
+
+    if (inventoryError) {
+        ctx.fillStyle = "rgba(45, 22, 22, 0.88)";
+        ctx.fillRect(280, 250, 400, 100);
+        strokeChampionIronFrame(280, 250, 400, 100);
+        ctx.fillStyle = "#c07060";
+        ctx.font = "bold 20px Ubuntu, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("INVENTORY FULL!", 480, 288);
+        ctx.font = "12px Ubuntu, sans-serif";
+        ctx.fillStyle = "#9a8b78";
+        ctx.fillText("(Click anywhere to dismiss)", 480, 312);
+    }
+
+    ctx.textAlign = "center";
     uiButtons.forEach(btn => {
-        if (btn.state === "forge") {
-            if (btn.label === "CRAFT" && assets['craft_btn'] && assets['craft_btn'].complete) {
-                if (player.ore >= 10) {
-                    ctx.shadowBlur = 25;
-                    ctx.shadowColor = COLORS.GOLD;
-                }
-                ctx.drawImage(assets['craft_btn'], btn.x, btn.y, btn.w, btn.h);
-                ctx.shadowBlur = 0;
-            } else if (btn.label === "BACK TO CAMP" && assets['back_to_camp_btn'] && assets['back_to_camp_btn'].complete) {
-                ctx.drawImage(assets['back_to_camp_btn'], btn.x, btn.y, btn.w, btn.h);
-            } else {
-                drawStyledBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.color);
-            }
+        if (btn.state !== "shop") return;
+        if (btn.noDraw && btn.sellItemRef) return;
+        if (btn.label === "BACK" && assets.back_to_camp_btn && assets.back_to_camp_btn.complete) {
+            ctx.drawImage(assets.back_to_camp_btn, btn.x, btn.y, btn.w, btn.h);
+        } else if (btn.shopRedRefresh) {
+            drawShopRefreshRedBtn(btn.x, btn.y, btn.w, btn.h, btn.label, btn.shopAffordable !== false);
+        } else {
+            drawShopGothicBtn(btn.x, btn.y, btn.w, btn.h, btn.label, { affordable: btn.shopAffordable !== false });
         }
     });
 }
@@ -2422,35 +2652,34 @@ function renderItemDetails() {
     ctx.fillStyle = "rgba(18,16,28,0.94)";
     ctx.fillRect(600, 110, 310, 400);
     strokeChampionIronFrame(600, 110, 310, 400);
-    if (salvageConfirm) {
-        ctx.fillStyle = COLORS.CREAM; ctx.font = "bold 18px Ubuntu"; ctx.textAlign = "center";
-        ctx.fillText("SALVAGE RARE ITEM?", 755, 230);
-        ctx.font = "14px Ubuntu"; ctx.fillText("This cannot be undone.", 755, 260);
-    } else {
-        ctx.fillStyle = COLORS.RED; ctx.fillRect(875, 115, 30, 30);
-        ctx.fillStyle = COLORS.CREAM; ctx.textAlign = "center"; ctx.fillText("X", 890, 137);
-        ctx.fillStyle = COLORS[`RARITY_${selectedInvItem.rarity}`]; ctx.font = "bold 20px Ubuntu"; ctx.textAlign = "center";
-        ctx.fillText(selectedInvItem.name.toUpperCase(), 755, 150);
-        let curEquip = null;
-        if (selectedInvItem.type === "weapon") curEquip = player.weapon;
-        else if (selectedInvItem.type === "armor") curEquip = player.armor;
-        else if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)
-            && ACCOUNT_EQUIP_SLOT_IDS.includes(selectedInvItem.type)) {
-            curEquip = player[selectedInvItem.type];
-        }
-        let sy = 220;
-        ["STR", "DEX", "STA", "LUCK"].forEach(s => {
-            const newVal = selectedInvItem[s] || 0, oldVal = (curEquip && curEquip !== selectedInvItem) ? (curEquip[s] || 0) : 0, diff = newVal - oldVal;
-            if (newVal > 0 || oldVal > 0) {
-                ctx.textAlign = "left"; ctx.fillStyle = COLORS.CREAM; ctx.fillText(`${s}: ${newVal}`, 630, sy);
-                if (diff !== 0 && curEquip !== selectedInvItem) {
-                    ctx.fillStyle = diff > 0 ? COLORS.GREEN : COLORS.RED;
-                    ctx.fillText(`(${diff > 0 ? "+" : ""}${diff})`, 730, sy);
-                }
-                sy += 35;
-            }
-        });
+    ctx.fillStyle = COLORS.RED; ctx.fillRect(875, 115, 30, 30);
+    ctx.fillStyle = COLORS.CREAM; ctx.textAlign = "center"; ctx.fillText("X", 890, 137);
+    ctx.fillStyle = COLORS[`RARITY_${selectedInvItem.rarity}`]; ctx.font = "bold 20px Ubuntu"; ctx.textAlign = "center";
+    ctx.fillText(selectedInvItem.name.toUpperCase(), 755, 150);
+    let curEquip = null;
+    if (selectedInvItem.type === "weapon") curEquip = player.weapon;
+    else if (selectedInvItem.type === "armor") curEquip = player.armor;
+    else if (typeof ACCOUNT_EQUIP_SLOT_IDS !== "undefined" && Array.isArray(ACCOUNT_EQUIP_SLOT_IDS)
+        && ACCOUNT_EQUIP_SLOT_IDS.includes(selectedInvItem.type)) {
+        curEquip = player[selectedInvItem.type];
     }
+    let sy = 220;
+    ["STR", "DEX", "STA", "LUCK"].forEach(s => {
+        const newVal = selectedInvItem[s] || 0, oldVal = (curEquip && curEquip !== selectedInvItem) ? (curEquip[s] || 0) : 0, diff = newVal - oldVal;
+        if (newVal > 0 || oldVal > 0) {
+            ctx.textAlign = "left"; ctx.fillStyle = COLORS.CREAM; ctx.fillText(`${s}: ${newVal}`, 630, sy);
+            if (diff !== 0 && curEquip !== selectedInvItem) {
+                ctx.fillStyle = diff > 0 ? COLORS.GREEN : COLORS.RED;
+                ctx.fillText(`(${diff > 0 ? "+" : ""}${diff})`, 730, sy);
+            }
+            sy += 35;
+        }
+    });
+    ctx.textAlign = "center";
+    ctx.font = "12px Ubuntu";
+    ctx.fillStyle = COLORS.UI_MUTED_TEXT;
+    const sg = typeof getSellGoldForItem === "function" ? getSellGoldForItem(selectedInvItem) : 10;
+    ctx.fillText(`Sell at shop for ${sg} gold`, 755, 380);
 }
 
 function drawEnd() {
